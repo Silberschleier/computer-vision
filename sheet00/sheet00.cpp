@@ -7,15 +7,17 @@ using namespace std;
 using namespace cv;
 
 void readImage(const char* file, Mat& result) {
-    //TODO: implement your solution here
+    result = imread("images/bonn.png", CV_LOAD_IMAGE_COLOR);
 }
 
 void display(const char* windowTitle, Mat& img) {
-    //TODO: implement your solution here
+    namedWindow(windowTitle, WINDOW_AUTOSIZE);
+    imshow(windowTitle, img);
+    waitKey(0);
 }
 
 void convertToGrayImg(Mat& img, Mat& result) {
-    //TODO: implement your solution here
+    cvtColor(img, result, CV_BGR2GRAY);
 }
 
 void subtractIntensityImage(Mat& bgrImg, Mat& grayImg, Mat& result) {
