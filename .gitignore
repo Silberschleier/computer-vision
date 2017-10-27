@@ -33,3 +33,5 @@
 
 .idea/
 cmake-build-debug/
+sheet00/CMakeCache.txt
+sheet00/CMakeFiles/
