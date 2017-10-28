@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
     //part1();
     //part2();
     //part3();
-    //part4();
+    part4();
     //part5();
 
     std::cout <<                                                            std::endl;
@@ -109,7 +109,6 @@ void part2()
     cv::waitKey(0);
 
     // Perform the blending using a Laplacian Pyramid
-
     // Show the blending results @ several layers
     // using **cv::imshow and cv::waitKey()** and when necessary **std::cout**
     // In the end, after the last cv::waitKey(), use **cv::destroyAllWindows()**
@@ -175,12 +174,17 @@ void part4()
     // BGR to Gray
     cv::Mat                       im_Traffic_Gray;
     cv::cvtColor( im_Traffic_BGR, im_Traffic_Gray, cv::COLOR_BGR2GRAY );
+    cv::Mat edges;
 
     // Perform edge detection as described in the exercise sheet
+    cv::Canny(im_Traffic_Gray, edges, 300, 100);
 
     // Show results
     // using **cv::imshow and cv::waitKey()** and when necessary **std::cout**
     // In the end, after the last cv::waitKey(), use **cv::destroyAllWindows()**
+    cv::namedWindow("Part 4", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Part 4", edges);
+    cv::waitKey(0);
 
     cv::destroyAllWindows();
 }
