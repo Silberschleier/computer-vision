@@ -27,11 +27,11 @@ int main(int argc, char* argv[])
     // Uncomment the part of the exercise that you wish to implement.
     // For the final submission all implemented parts should be uncommented.
 
-    part1();
-    part2();
-    part3();
-    part4();
-    //part5();
+    //part1();
+    //part2();
+    //part3();
+    //part4();
+    part5();
 
     std::cout <<                                                            std::endl;
     std::cout << "/////////////////////////////////////////////////////" << std::endl;
@@ -392,6 +392,24 @@ void part4()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+double chamfer_distance(cv::Mat& im, cv::Mat& templ, int pos_x, int pos_y) {
+    int count_edge_pixels = 0;
+    double distance = 0;
+
+    // Add all distances for each corresponding template edge pixel
+    for (int i = 0; i < templ.rows; i++) {
+        for (int j = 0; j < templ.cols; j++) {
+            if (templ.at<uchar>(i, j) == 255) {
+                if ( (pos_x + i < im.cols) && (pos_y + j < im.rows) ) {
+                    distance += im.at<uchar>(pos_x + i, pos_y + j);
+                } else distance += 255; // In case the specified position is outside of the image
+                count_edge_pixels++;
+            }
+        }
+    }
+    return distance;
+}
+
 
 void part5()
 {
@@ -414,13 +432,57 @@ void part5()
     cv::Mat im_Sign_Gray;
     // BGR to Gray
     cv::cvtColor( im_Sign_BGR, im_Sign_Gray, cv::COLOR_BGR2GRAY ); // cv::COLOR_BGR2GRAY // CV_BGR2GRAY
+    cv::resize(im_Sign_Gray, im_Sign_Gray, cv::Size(75, 60));
 
-    // Perform the steps described in the exercise sheet
+    // Calculate distance transformation
+    cv::Mat traffic_edges;
+    cv::Canny(im_Traffic_Gray, traffic_edges, 550, 3);
+    cv::Mat inverse_traffic_edges = cv::Scalar::all(255) - traffic_edges;
+    cv::Mat transformation;
+    cv::distanceTransform(inverse_traffic_edges, transformation, CV_DIST_L1, 3);
+    cv::normalize(transformation, transformation, 0.0, 1.0, cv::NORM_MINMAX);
+
+    // Extract edges of the sign
+    cv::Mat sign_edges;
+    cv::Canny(im_Sign_Gray, sign_edges, 350, 3);
+
+    // Matching
+    cv::Mat voting_space = cv::Mat::zeros(im_Traffic_Gray.size(), CV_32F);
+    double distance;
+    for (int i = 0; i < voting_space.rows; i++) {
+        for (int j = 0; j < voting_space.cols; j++) {
+            distance = chamfer_distance(transformation, sign_edges, i, j);
+            voting_space.at<uchar>(i, j) = distance;
+        }
+    }
+
+    double min, max;
+    cv::Point min_loc, max_loc;
+    cv::minMaxLoc(voting_space, &min, &max, &min_loc, &max_loc);
+    cv::rectangle(im_Traffic_BGR, min_loc, cv::Point(min_loc.x + sign_edges.rows, min_loc.y - sign_edges.cols), cv::Scalar(255, 0, 0), 4);
+
+    cv::normalize(voting_space, voting_space, 0.0, 1.0, cv::NORM_MINMAX);
 
     // Show results
     // using **cv::imshow and cv::waitKey()** and when necessary **std::cout**
     // In the end, after the last cv::waitKey(), use **cv::destroyAllWindows()**
     // If needed perform normalization of the image to be displayed
+
+    cv::namedWindow("Part 5: Distance Transformation", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Part 5: Distance Transformation", transformation);
+
+    cv::namedWindow("Part 5: Edges Traffic", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Part 5: Edges Traffic", traffic_edges);
+
+    cv::namedWindow("Part 5: Edges Sign", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Part 5: Edges Sign", sign_edges);
+
+    cv::namedWindow("Part 5: Voting Space", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Part 5: Voting Space", voting_space);
+
+    cv::namedWindow("Part 5: Result", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Part 5: Result", im_Traffic_BGR);
+    cv::waitKey(0);
 
     cv::destroyAllWindows();
 }
