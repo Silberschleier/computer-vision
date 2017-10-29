@@ -27,10 +27,10 @@ int main(int argc, char* argv[])
     // Uncomment the part of the exercise that you wish to implement.
     // For the final submission all implemented parts should be uncommented.
 
-    //part1();
-    //part2();
-    //part3();
-    //part4();
+    part1();
+    part2();
+    part3();
+    part4();
     part5();
 
     std::cout <<                                                            std::endl;
@@ -315,7 +315,7 @@ void part3()
     cv::Sobel(im_Traffic_Gray, gradients_y, -1, 0, 1);
     int threshold = 250;
 
-    cv::Mat arrows = cv::Mat::zeros(im_Traffic_Gray.size(), CV_32F);
+    cv::Mat arrows = cv::Mat::zeros(im_Traffic_Gray.size(), CV_8UC1);
 
     for (int i = 0; i < gradients_x.rows; i++) {
         for (int j = 0; j < gradients_x.cols; j += 10) {
