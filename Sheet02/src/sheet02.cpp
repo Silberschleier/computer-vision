@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
 
     //part1();
     //part2();
-    //part3();
+    part3();
     part4();
     //part5();
 
@@ -141,6 +141,24 @@ void part3()
     cv::cvtColor(     im_Traffic_BGR, im_Traffic_Gray, cv::COLOR_BGR2GRAY ); // cv::COLOR_BGR2GRAY // CV_BGR2GRAY
 
     // Perform the computations asked in the exercise sheet
+    cv::Mat gradients_x;
+    cv::Mat gradients_y;
+    cv::Sobel(im_Traffic_Gray, gradients_x, -1, 1, 0);
+    cv::Sobel(im_Traffic_Gray, gradients_y, -1, 0, 1);
+    int threshold = 250;
+
+    cv::Mat arrows = cv::Mat::zeros(im_Traffic_Gray.size(), CV_32F);
+
+    for (int i = 0; i < gradients_x.rows; i++) {
+        for (int j = 0; j < gradients_x.cols; j += 10) {
+            double grad_x = gradients_x.at<uchar>(i, j);
+            double grad_y = gradients_y.at<uchar>(i, j);
+            double magnitude = std::sqrt(pow(grad_x, 2) + pow(grad_y, 2));
+            if (magnitude < threshold) continue;
+            double angle = atan(grad_y / grad_x) * 180 / M_PI;
+            drawArrow(arrows, cv::Point(i, j), cv::Scalar(254), 0.1, 10, magnitude, angle);
+        }
+    }
 
     // Show results
     // using **cv::imshow and cv::waitKey()** and when necessary **std::cout**
@@ -150,6 +168,14 @@ void part3()
     // draw Vectors showing the Gradient Magnitude and Orientation
     // (to avoid clutter, draw every 10nth gradient,
     // only if the magnitude is above a threshold)
+
+    cv::namedWindow("Part 3: Traffic", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Part 3: Traffic", im_Traffic_Gray);
+
+    cv::namedWindow("Part 3: Arrows", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Part 3: Arrows", arrows);
+
+    cv::waitKey(0);
 
     cv::destroyAllWindows();
 }
@@ -182,8 +208,10 @@ void part4()
     // Show results
     // using **cv::imshow and cv::waitKey()** and when necessary **std::cout**
     // In the end, after the last cv::waitKey(), use **cv::destroyAllWindows()**
-    cv::namedWindow("Part 4", cv::WINDOW_AUTOSIZE);
-    cv::imshow("Part 4", edges);
+    cv::namedWindow("Part 4: Traffic", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Part 4: Traffic", im_Traffic_Gray);
+    cv::namedWindow("Part 4: Edges", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Part 4: Edges", edges);
     cv::waitKey(0);
 
     cv::destroyAllWindows();
