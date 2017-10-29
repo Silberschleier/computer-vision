@@ -400,14 +400,14 @@ double chamfer_distance(cv::Mat& im, cv::Mat& templ, int pos_x, int pos_y) {
     for (int i = 0; i < templ.rows; i++) {
         for (int j = 0; j < templ.cols; j++) {
             if (templ.at<uchar>(i, j) == 255) {
-                if ( (pos_x + i < im.cols) && (pos_y + j < im.rows) ) {
+                if ( (pos_x + i < im.rows) && (pos_y + j < im.cols) ) {
                     distance += im.at<uchar>(pos_x + i, pos_y + j);
                 } else distance += 255; // In case the specified position is outside of the image
                 count_edge_pixels++;
             }
         }
     }
-    return distance;
+    return distance / count_edge_pixels;
 }
 
 
@@ -432,11 +432,11 @@ void part5()
     cv::Mat im_Sign_Gray;
     // BGR to Gray
     cv::cvtColor( im_Sign_BGR, im_Sign_Gray, cv::COLOR_BGR2GRAY ); // cv::COLOR_BGR2GRAY // CV_BGR2GRAY
-    cv::resize(im_Sign_Gray, im_Sign_Gray, cv::Size(75, 60));
+    cv::resize(im_Sign_Gray, im_Sign_Gray, cv::Size(70, 60));
 
     // Calculate distance transformation
     cv::Mat traffic_edges;
-    cv::Canny(im_Traffic_Gray, traffic_edges, 550, 3);
+    cv::Canny(im_Traffic_Gray, traffic_edges, 500, 3);
     cv::Mat inverse_traffic_edges = cv::Scalar::all(255) - traffic_edges;
     cv::Mat transformation;
     cv::distanceTransform(inverse_traffic_edges, transformation, CV_DIST_L1, 3);
@@ -447,8 +447,9 @@ void part5()
     cv::Canny(im_Sign_Gray, sign_edges, 350, 3);
 
     // Matching
-    cv::Mat voting_space = cv::Mat::zeros(im_Traffic_Gray.size(), CV_32F);
+    cv::Mat voting_space = cv::Mat::zeros(im_Traffic_Gray.size(), CV_8UC1);
     double distance;
+    // Calculate chamfer distance for every position
     for (int i = 0; i < voting_space.rows; i++) {
         for (int j = 0; j < voting_space.cols; j++) {
             distance = chamfer_distance(transformation, sign_edges, i, j);
@@ -458,10 +459,17 @@ void part5()
 
     double min, max;
     cv::Point min_loc, max_loc;
-    cv::minMaxLoc(voting_space, &min, &max, &min_loc, &max_loc);
-    cv::rectangle(im_Traffic_BGR, min_loc, cv::Point(min_loc.x + sign_edges.rows, min_loc.y - sign_edges.cols), cv::Scalar(255, 0, 0), 4);
 
-    cv::normalize(voting_space, voting_space, 0.0, 1.0, cv::NORM_MINMAX);
+    // First sign
+    cv::minMaxLoc(voting_space, &min, &max, &min_loc, &max_loc);
+    cv::rectangle(im_Traffic_BGR, min_loc, cv::Point(min_loc.x + sign_edges.rows, min_loc.y + sign_edges.cols), cv::Scalar(255, 0, 0), 4);
+    voting_space.at<uchar>(min_loc) = 255; // To 'forget' the first minimum
+
+    // Second sign
+    cv::minMaxLoc(voting_space, &min, &max, &min_loc, &max_loc);
+    cv::rectangle(im_Traffic_BGR, min_loc, cv::Point(min_loc.x + sign_edges.rows, min_loc.y + sign_edges.cols), cv::Scalar(0, 0, 255), 4);
+
+    //cv::normalize(voting_space, voting_space, 0.0, 1.0, cv::NORM_MINMAX);
 
     // Show results
     // using **cv::imshow and cv::waitKey()** and when necessary **std::cout**
