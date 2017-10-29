@@ -91,6 +91,25 @@ void part1()
     // Show every layer of the pyramid
     // using **cv::imshow and cv::waitKey()** and when necessary **std::cout**
     // In the end, after the last cv::waitKey(), use **cv::destroyAllWindows()**
+    
+    // Display the images of "gpyr"
+    for(int i=0; i < gpyr.size(); i++) {
+	char s[] = "gpyr layer  ";
+	s[11] = (char) (i+48); //ASCII
+        cv::namedWindow( s, cv::WINDOW_AUTOSIZE);
+        cv::imshow(s, gpyr[i]);
+        cv::waitKey(0);
+    }
+    cv::destroyAllWindows();
+    // Display the images of "myGpyr"
+    for(int i=0; i < myGpyr.size(); i++) {
+	char s[] = "myGpyr layer   ";
+	s[13] = (char) (i+48); //ASCII
+        cv::namedWindow( s, cv::WINDOW_AUTOSIZE);
+        cv::imshow(s, myGpyr[i]);
+        cv::waitKey(0);
+    }
+    cv::destroyAllWindows();
 
     // For the laplacian pyramid you should define your own container.
     // If needed perform normalization of the image to be displayed
@@ -112,7 +131,54 @@ void part1()
     cv::destroyAllWindows();
 }
 
+void buildMyPyramid( cv::Mat& src, std::vector<cv::Mat>& dst, int maxlevel) 
+{
+    cv::Mat gaussian_kernel = cv::getGaussianKernel(5, 2., CV_64F );
+    
+    dst.push_back(src.clone());
+    for(int i=1; i <= maxlevel; i++) {
+        
+        dst.push_back(dst[i-1].clone());
 
+	// use gaussian filter
+        cv::filter2D(dst[i-1], dst[i], -1, gaussian_kernel);
+
+	// remove every even-numbered row and column
+        cv::Mat dst_i = dst[i](cv::Rect(0, 0, (int) (dst[i].cols/2.+0.5), (int) (dst[i].rows/2. + 0.5))); // size of dst[i] without even-numbered rows and columns
+	int row_dst_i = 0;
+        int col_dst_i = 0;
+	for(int row=1; row < dst[i].rows; row=row+2) {
+            col_dst_i = 0;
+            for(int col=1; col < dst[i].cols; col=col+2) {
+                dst_i.at<uchar>(row_dst_i, col_dst_i) = dst[i].at<uchar>(row,col);
+                col_dst_i++;
+            }
+            row_dst_i++;
+        }
+	dst[i] = dst_i;
+    }
+}
+
+void buildLaplacianPyramid( cv::Mat& src, std::vector<cv::Mat>& dst, int maxlevel) {
+    // construct Gaussian pyramids
+    std::vector<cv::Mat>   gpyr;    // this will hold the Gaussian Pyramid created with OpenCV
+    cv::buildPyramid( src, gpyr, maxlevel, cv::BORDER_DEFAULT);
+
+    // construct laplacian pyramids
+    std::vector<cv::Mat>   lpyr(maxlevel+1);    // this will hold the laplacian Pyramid
+    
+    lpyr[maxlevel] = gpyr[gpyr.size()-1];
+    for(int level=maxlevel-1; level>=0; level--) {
+        // expand G_i+1
+        cv::Mat expand;
+        cv::pyrUp( gpyr[level+1], expand, cv::Size( gpyr[level].cols, gpyr[level].rows ) );
+
+        // L_i = G_i - expand(G_i+1)
+        cv::Mat laplacian = gpyr[level] - expand;
+        lpyr[level] = laplacian;
+    }
+    dst = lpyr;
+}
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
