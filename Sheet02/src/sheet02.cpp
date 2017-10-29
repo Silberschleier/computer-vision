@@ -9,6 +9,8 @@ void part2();
 void part3();
 void part4();
 void part5();
+void buildMyPyramid( cv::Mat& src, std::vector<cv::Mat>& dst, int maxlevel); //part1 the gaussian pyramid
+void buildLaplacianPyramid( cv::Mat& src, std::vector<cv::Mat>& dst, int maxlevel); //part1 the laplacian pyramid
 void drawArrow(cv::Mat &image, cv::Point p, cv::Scalar color, double scaleMagnitude, double scaleArrowHead, double magnitube, double orientationDegrees);
 
 
@@ -25,8 +27,8 @@ int main(int argc, char* argv[])
     // Uncomment the part of the exercise that you wish to implement.
     // For the final submission all implemented parts should be uncommented.
 
-    //part1();
-    //part2();
+    part1();
+    part2();
     //part3();
     //part4();
     //part5();
@@ -70,7 +72,21 @@ void part1()
 
     // Please implement the pyramids as described in the exercise sheet, using the containers given above.
 
+    //cv::buildPyramid (InputArray src, OutputArrayOfArrays dst, int maxlevel, int borderType=BORDER_DEFAULT) constructs the Gaussian pyramid for an image.
+    int maxlevel = 5;
+    cv::buildPyramid( im_Traffic_Gray, gpyr, maxlevel, cv::BORDER_DEFAULT);
+    
+    buildMyPyramid( im_Traffic_Gray, myGpyr, maxlevel);
+
     // Perform the computations asked in the exercise sheet and show them using **std::cout**
+    // Compute the maximal pixel-wise difference between both versions for each layer.
+    for(int i=0; i<= maxlevel; i++) {
+        cv::Mat diff;
+        cv::absdiff(gpyr[i], myGpyr[i], diff);
+        double minVal, maxVal;
+        minMaxLoc(diff, &minVal, &maxVal);
+        std::cout << "maximum pixel error layer "<<  (char) (i+48) << ": " << maxVal << std::endl; //ASCII
+    }
 
     // Show every layer of the pyramid
     // using **cv::imshow and cv::waitKey()** and when necessary **std::cout**
@@ -78,6 +94,20 @@ void part1()
 
     // For the laplacian pyramid you should define your own container.
     // If needed perform normalization of the image to be displayed
+
+    // construct laplacian pyramids
+    std::vector<cv::Mat>   lpyr;    // this will hold the laplacian Pyramid
+    
+    buildLaplacianPyramid( im_Traffic_Gray, lpyr, maxlevel);
+
+    // Display the images of "lpyr"
+    for(int i=0; i < lpyr.size(); i++) {
+	char s[] = "lpyr layer   ";
+	s[11] = (char) (i+48); //ASCII
+        cv::namedWindow( s, cv::WINDOW_AUTOSIZE);
+        cv::imshow(s, lpyr[i]);
+        cv::waitKey(0);
+    }
 
     cv::destroyAllWindows();
 }
@@ -100,20 +130,91 @@ void part2()
     std::cout << "/////////////////////////////////////////////////////" << std::endl;
 
     // apple and orange are CV_32FC3
-    cv::Mat im_Apple, im_Orange;
-    cv::imread("./images/apple.jpg",  cv::IMREAD_COLOR).convertTo(im_Apple,  CV_32FC3, (1./255.));
-    cv::imread("./images/orange.jpg", cv::IMREAD_COLOR).convertTo(im_Orange, CV_32FC3, (1./255.));
+    cv::Mat im_Apple_BGR, im_Orange_BGR, im_Apple, im_Orange;
+    im_Apple = cv::imread("./images/apple.jpg",  cv::IMREAD_COLOR);
+    im_Orange = cv::imread("./images/orange.jpg", cv::IMREAD_COLOR);
+    //cv::cvtColor(im_Apple_BGR, im_Apple, CV_BGR2GRAY);
+    //cv::cvtColor(im_Orange_BGR, im_Orange, CV_BGR2GRAY);
+    //cv::imread("./images/apple.jpg",  cv::IMREAD_COLOR).convertTo(im_Apple,  CV_32FC3, (1./255.));
+    //cv::imread("./images/orange.jpg", cv::IMREAD_COLOR).convertTo(im_Orange, CV_32FC3, (1./255.));
     cv::imshow("orange", im_Orange);
     cv::imshow("apple",  im_Apple );
-    std::cout << "\n" << "Input images" << "   \t\t\t\t\t\t\t" << "Press any key..." << std::endl;
+    std::cout << "\n" << "Input images" << "   \t\t\t\t\t\t\t" << std::endl << "Press any key..." << std::endl;
     cv::waitKey(0);
 
     // Perform the blending using a Laplacian Pyramid
 
+    // Build Laplacian pyramids LO and LA from images im_Orange and im_Apple
+    int maxlevel = 7;
+    std::vector<cv::Mat>   lpyr_LO;    // this will hold the laplacian Pyramid LO
+    std::vector<cv::Mat>   lpyr_LA;    // this will hold the laplacian Pyramid LA
+    cv::Mat im_O = im_Orange.clone();
+    cv::Mat im_A = im_Apple.clone();
+    buildLaplacianPyramid( im_O, lpyr_LO, maxlevel);
+    buildLaplacianPyramid( im_A, lpyr_LA, maxlevel);
+
+    //Build a Gaussian pyramid GR from selected region R
+
+    cv::Mat im_R = im_Orange.clone();
+    std::cout << "cols: " << im_Orange.cols << " rows: " << im_Orange.rows << std::endl;
+    for(int row=0; row < im_Apple.rows; row++) {
+        for(int col=0; col < im_Apple.cols/2; col++) {
+            im_R.at<uchar>(row,col) = im_Apple.at<uchar>(row,col);
+        }
+    }
+    std::vector<cv::Mat> lpyr_R = lpyr_LO; 
+    //buildLaplacianPyramid( im_R, lpyr_R, maxlevel);
+
+    //buildLaplacianPyramid( im_R, lpyr_R, maxlevel);
+    for(int i=0; i <= maxlevel; i ++) {
+        for(int row=0; row < lpyr_LA[i].rows; row++) {
+            for(int col=0; col < lpyr_LA[i].cols; col++) {
+//                lpyr_R[i].at<uchar>(row,col) = im_R.at<uchar>(row,col)*lpyr_LA[i].at<uchar>(row,col)+(1-im_R.at<uchar>(row,col))*lpyr_LO[i].at<uchar>(row,col);
+
+                if(col < im_Apple.cols/2) {
+                    lpyr_R[i].at<uchar>(row,col) = lpyr_LA[i].at<uchar>(row,col);
+                }
+
+                else if(col > im_Apple.cols/2) {
+                    lpyr_R[i].at<uchar>(row,col) = lpyr_LO[i].at<uchar>(row,col);
+                }
+                else {
+                    lpyr_R[i].at<cv::Vec3b>(row,col)[0] =(int)( (lpyr_LA[i].at<cv::Vec3b>(row,col)[0] + lpyr_LO[i].at<cv::Vec3b>(row,col)[0])/2);
+                }
+
+            }
+        }
+    }
+
+
+    //reconstruct gaussian pyramid
+    std::vector<cv::Mat>   gpyr_R(maxlevel+1);    // this will hold the Gaussian Pyramid
+    gpyr_R[maxlevel] = lpyr_R[maxlevel];
+
+    for(int level = maxlevel-1; level >= 0; level--) {
+        cv::Mat expand;
+        cv::pyrUp( gpyr_R[level+1], expand, cv::Size( lpyr_R[level].cols, lpyr_R[level].rows ) );
+
+        gpyr_R[level] = expand + 2*lpyr_R[level];
+    }
+
+    //cv::Mat result = gpyr_R[0];
+    //result = result + 5* lpyr_R[0];
+    //cv::imshow("result", result);
+    //cv::waitKey(0);
+
     // Show the blending results @ several layers
     // using **cv::imshow and cv::waitKey()** and when necessary **std::cout**
     // In the end, after the last cv::waitKey(), use **cv::destroyAllWindows()**
-
+    
+    // Display the images of "gpyr_R"
+    for(int i=0; i < gpyr_R.size(); i++) {
+	char s[] = "gpyr_R layer   ";
+	s[13] = (char) (i+48); //ASCII
+        cv::namedWindow( s, cv::WINDOW_AUTOSIZE);
+        cv::imshow(s, gpyr_R[i]);
+        cv::waitKey(0);
+    }
     cv::destroyAllWindows();
 }
 
