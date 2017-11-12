@@ -45,7 +45,7 @@ int main()
     part2_1();
     part2_2();
     part2_3();
-    //part3();
+    part3();
     part1_1();
     part1_2();
     part1_3();
