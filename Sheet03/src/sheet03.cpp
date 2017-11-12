@@ -418,12 +418,50 @@ void part3()
     // BGR -> LUV
     cv::Mat              flower_luv;
     cv::cvtColor(flower, flower_luv, CV_BGR2Luv);
+    cv::waitKey(0);
+
+    //current mass center
+    double m00 = 0.;
+    double m01 = 0.;
+    double m10 = 0.;
+    for(int row = 0; row < flower_luv.rows; row++) {
+        for(int col = 0; col < flower_luv.cols; col++) {
+            //flower_luv.at<cv::Vec3b>(row, col)[0];
+            //std::cout << flower_luv.at<cv::Vec3b>(row, col)[0] << std::endl;
+            m00 += flower_luv.at<cv::Vec3b>(row,col)[2];
+            m10 += row * flower_luv.at<cv::Vec3b>(row,col)[0];
+            m01 += col * flower_luv.at<cv::Vec3b>(row,col)[1];
+            //double center_x = m01/m00;
+            //double center_y = m10/m00;
+            //std::cout << center_x << " ; " << center_y << std::endl;
+        }
+    }
+    // sphere to mass center
+    double center_x = m01/m00;
+    double center_y = m10/m00;
+    std::cout << center_x << " ; " << center_y << std::endl;
+    std::cout << flower_luv.rows << " ; " << flower_luv.cols << std::endl;
+    
+    //for(int iterations = 0; iterations < 50;) {
+        //cv::TermCriteria criteria;
+        //cv::Rect window;
+        //cv::Mat d = flower_luv.clone();
+    //int iteratinos = cv::meanShift(d,window,(cv::TermCriteria) criteria);
+    //cv::imshow("window", d);
+    //}
 
     // Perform the steps described in the exercise sheet
 
     // Show results
     // using **cv::imshow and cv::waitKey()** and when necessary **std::cout**
     // In the end, after the last cv::waitKey(), use **cv::destroyAllWindows()**
+
+    //cv::namedWindow("Part 3: Traffic", cv::WINDOW_AUTOSIZE);
+    //cv::imshow("Part 3: Traffic", im_Traffic_Gray);
+
+
+
+    cv::waitKey(0);
 
     cv::destroyAllWindows();
 }
