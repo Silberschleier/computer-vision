@@ -42,12 +42,12 @@ int main()
     // For the final submission all implemented parts should be uncommented.
 
     part1_1();
-    part1_2();
-    part1_3();
-    part2_1();
-    part2_2();
-    part2_3();
-    part3();
+    //part1_2();
+    //part1_3();
+    //part2_1();
+    //part2_2();
+    //part2_3();
+    //part3();
 
     std::cout <<                                                                                                   std::endl;
     std::cout << "////////////////////////////////////////////////////////////////////////////////////////////" << std::endl;
@@ -80,13 +80,29 @@ void part1_1()
     // BGR to Gray
     cv::Mat                       im_Circles_Gray;
     cv::cvtColor( im_Circles_BGR, im_Circles_Gray, cv::COLOR_BGR2GRAY );
+
     // Synthetic image - No Blurring necessary for denoising !!!
+    // But it only detects circles after blurring...
+    cv::GaussianBlur(im_Circles_Gray, im_Circles_Gray, cv::Size(9,9), 2, 2);
 
-    // Perform the steps described in the exercise sheet
+    int canny_upper = 50;
+    int canny_lower = 10;
+    std::vector<cv::Vec3f> circles;
+    cv::HoughCircles(im_Circles_Gray, circles, cv::HOUGH_GRADIENT, 1, 1, canny_upper, canny_lower, 1, 8);
 
-    // Show results
-    // using **cv::imshow and cv::waitKey()** and when necessary **std::cout**
-    // In the end, after the last cv::waitKey(), use **cv::destroyAllWindows()**
+
+    std::cout << "Found " << circles.size() << " circles." << std::endl;
+    for (size_t i = 0; i < circles.size(); i++) {
+        cv::Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+        int radius = circles[i][2];
+
+        std::cout << "Circle at " << circles[i][0] << ", " << circles[i][1] << " with radius " << radius << std::endl;
+        cv::circle(im_Circles_BGR, center, radius, cv::Scalar(0, 255, 0), 3, 8, 0);
+    }
+
+    cv::namedWindow("Part 1.1", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Part 1.1", im_Circles_BGR);
+    cv::waitKey(0);
 
     cv::destroyAllWindows();
 }
