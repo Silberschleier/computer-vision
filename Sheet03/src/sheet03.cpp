@@ -42,9 +42,9 @@ int main()
     // For the final submission all implemented parts should be uncommented.
 
 
-    //part2_1();
-    //part2_2();
-    //part2_3();
+    part2_1();
+    part2_2();
+    part2_3();
     //part3();
     part1_1();
     part1_2();
@@ -70,12 +70,10 @@ int main()
 
 
 void draw_circles(std::vector<cv::Vec3f> circles, cv::Mat& im) {
-    std::cout << "Found " << circles.size() << " circles." << std::endl;
     for (size_t i = 0; i < circles.size(); i++) {
         cv::Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
         int radius = circles[i][2];
 
-        std::cout << "Circle at " << circles[i][0] << ", " << circles[i][1] << " with radius " << radius << std::endl;
         cv::circle(im, center, radius, cv::Scalar(0, 255, 0), 3, 8, 0);
     }
 }
@@ -137,16 +135,11 @@ void detect_circles(cv::Mat& im, cv::Mat& accumulator, std::vector<cv::Vec3f>& c
     for (int i = 0; i < im.rows; i++) {
         for (int j = 0; j < im.cols; j++) {
             if (edges.at<uchar>(i, j) > 0) {
-                double local_angle = angles.at<double>(i, j);
-                double ax = i - radius * cos(local_angle);
-                double bx = j - radius * sin(local_angle);
-                double ay = i + radius * cos(local_angle);
-                double by = j + radius * sin(local_angle);
-                //std::cout << "i: " << i << ", j: " << j << ", a: " << a << ", b: " << b << std::endl;
-                if (ax < im.cols && bx < im.rows) accumulator.at<uchar>(round(ax), round(bx)) += 1;
-                if (ax < im.cols && by < im.rows) accumulator.at<uchar>(round(ax), round(by)) += 1;
-                if (ay < im.cols && bx < im.rows) accumulator.at<uchar>(round(ay), round(bx)) += 1;
-                if (ay < im.cols && by < im.rows) accumulator.at<uchar>(round(ay), round(by)) += 1;
+                for (int d = 0; d < 360; d++) {
+                    double a = i - radius * cos(d);
+                    double b = j - radius * sin(d);
+                    if (a < im.cols && b < im.rows) accumulator.at<uchar>(round(a), round(b)) += 1;
+                }
             }
         }
     }
@@ -183,7 +176,7 @@ void part1_2()
     cv::Mat accumulator;
     std::vector<cv::Vec3f> circles;
 
-    detect_circles(im_Circles_Gray, accumulator, circles, 4, 200);
+    detect_circles(im_Circles_Gray, accumulator, circles, 5, 220);
     draw_circles(circles, im_Circles_BGR);
 
     cv::namedWindow("Part 1.2", cv::WINDOW_AUTOSIZE);
@@ -236,7 +229,7 @@ void part1_3()
     cv::Mat accumulator;
     std::vector<cv::Vec3f> circles;
 
-    detect_circles(im_Face_Gray, accumulator, circles, 3, 220);
+    detect_circles(im_Face_Gray, accumulator, circles, 4, 220);
     draw_circles(circles, im_Face_BGR);
 
     // Show results
