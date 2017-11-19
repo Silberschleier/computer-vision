@@ -48,7 +48,7 @@ int main()
     // Uncomment the part of the exercise that you wish to implement.
     // For the final submission all implemented parts should be uncommented.
 
-    part1();
+    //part1();
     part2();
 
     std::cout <<                                                                                                   std::endl;
@@ -229,6 +229,39 @@ void drawSnake(       cv::Mat                   img,
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void gradient_descent(cv::Mat& phi, cv::Mat& img_magnitudes) {
+    double tau = 0.01;
+    double epsilon = 0.0001;
+    int sobel_kernel_size = 1;
+
+    cv::Mat phi2;
+    cv::pow(phi, 2, phi2);
+
+    cv::Mat grad_phi_x, grad_phi_y, grad_phi_xx, grad_phi_yy, grad_phi_xy;
+    cv::Mat grad_phi2_x, grad_phi2_y;
+    cv::Sobel(phi, grad_phi_x, CV_32FC1, 1, 0, 3);
+    cv::Sobel(phi, grad_phi_y, CV_32FC1, 0, 1, 3);
+    cv::Sobel(phi, grad_phi_xx, CV_32FC1, 2, 0, 3);
+    cv::Sobel(phi, grad_phi_yy, CV_32FC1, 0, 2, 3);
+    cv::Sobel(phi, grad_phi_xy, CV_32FC1, 1, 1, 3);
+    cv::Sobel(phi2, grad_phi2_x, CV_32FC1, 1, 0, sobel_kernel_size);
+    cv::Sobel(phi2, grad_phi2_y, CV_32FC1, 0, 1, sobel_kernel_size);
+
+    double add;
+    for (int x=0; x<phi.rows; x++) {
+        for (int y=0; y<phi.cols; y++) {
+            add = 0;
+            add += grad_phi_xx.at<float>(x, y) * grad_phi_y.at<float>(x, y) * grad_phi_y.at<float>(x, y);
+            add -= 2 * grad_phi_x.at<float>(x, y) * grad_phi_y.at<float>(x, y) * grad_phi_xy.at<float>(x, y);
+            add += grad_phi_yy.at<float>(x, y) * grad_phi_x.at<float>(x, y) * grad_phi_x.at<float>(x, y);
+            add /= grad_phi_x.at<float>(x, y) * grad_phi_x.at<float>(x, y) + grad_phi_y.at<float>(x, y)*grad_phi_y.at<float>(x, y) + epsilon;
+
+            add *= tau / (img_magnitudes.at<float>(x, y) + 1);
+            phi.at<float>(x, y) += add;
+        }
+    }
+
+}
 
 ///////////////////////////////////////////////////////////
 // runs the level-set geodesic active contours algorithm //
@@ -260,6 +293,26 @@ void levelSetContours( const cv::Mat& img, const cv::Point2f center, const float
     // Iterate until
     // - the contour does not change between 2 consequitive iterations, or
     // - until a maximum number of iterations is reached
+
+    cv::Mat img_gray;
+    cv::cvtColor( img, img_gray, cv::COLOR_BGR2GRAY );
+
+    cv::Mat img_grad_x, img_grad_y;
+    cv::Mat img_magnitudes, img_angles;
+
+    cv::Sobel(img_gray, img_grad_x, CV_32F, 1, 0, 3);
+    cv::Sobel(img_gray, img_grad_y, CV_32F, 0, 1, 3);
+    cv::cartToPolar(img_grad_x, img_grad_y, img_magnitudes, img_angles, false);
+
+    for (int k = 0; k < 13000; k++) {
+        gradient_descent(phi, img_magnitudes);
+
+        if (k % 100 == 0) {
+            showGray(    phi, "phi", 1 );
+            showContour( img, temp,  1 );
+            std::cout << "k = "<< k << std::endl;
+        }
+    }
 
     // At each step visualize the current result
     // using **showGray() and showContour()** as in the example above and when necessary **std::cout**
