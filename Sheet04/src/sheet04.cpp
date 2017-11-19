@@ -230,20 +230,22 @@ void drawSnake(       cv::Mat                   img,
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void gradient_descent(cv::Mat& phi, cv::Mat& w, cv::Mat& w_grad_x, cv::Mat& w_grad_y) {
-    double tau = 1;
+    double tau = 0.05;
     double epsilon = 0.001;
     int sobel_kernel_size = 1;
 
     //cv::Mat w(phi.size(), CV_32FC1);
     //cv::pow(phi, 2, phi2);
 
+    cv::Mat phi_new(phi.size(), phi.type());
+
     cv::Mat grad_phi_x, grad_phi_y, grad_phi_xx, grad_phi_yy, grad_phi_xy;
     //cv::Mat grad_phi2_x, grad_phi2_y;
-    /*cv::Sobel(phi, grad_phi_x, CV_32FC1, 1, 0, 3);
-    cv::Sobel(phi, grad_phi_y, CV_32FC1, 0, 1, 3);
-    cv::Sobel(phi, grad_phi_xx, CV_32FC1, 2, 0, 3);
-    cv::Sobel(phi, grad_phi_yy, CV_32FC1, 0, 2, 3);
-    cv::Sobel(phi, grad_phi_xy, CV_32FC1, 1, 1, 3);*/
+    /*cv::Sobel(phi, grad_phi_x, CV_32FC1, 1, 0, 1);
+    cv::Sobel(phi, grad_phi_y, CV_32FC1, 0, 1, 1);
+    cv::Sobel(phi, grad_phi_xx, CV_32FC1, 2, 0, 1);
+    cv::Sobel(phi, grad_phi_yy, CV_32FC1, 0, 2, 1);
+    cv::Sobel(phi, grad_phi_xy, CV_32FC1, 1, 1, 1);*/
     //cv::Sobel(phi2, grad_phi2_x, CV_32FC1, 1, 0, sobel_kernel_size);
     //cv::Sobel(phi2, grad_phi2_y, CV_32FC1, 0, 1, sobel_kernel_size);
 
@@ -261,28 +263,31 @@ void gradient_descent(cv::Mat& phi, cv::Mat& w, cv::Mat& w_grad_x, cv::Mat& w_gr
 
             deriv_x = 0.5 * (phi.at<float>(x+1, y) - phi.at<float>(x-1, y));
             deriv_y = 0.5 * (phi.at<float>(x, y+1) - phi.at<float>(x, y-1));
-            deriv_xx = (1 / 2) * (phi.at<float>(x+1, y) - 2 * phi.at<float>(x, y) + phi.at<float>(x-1, y));
-            deriv_yy = (1 / 2) * (phi.at<float>(x, y+1) - 2 * phi.at<float>(x, y) + phi.at<float>(x, y-1));
-            deriv_xy = (1 / 4) * (phi.at<float>(x+1, y+1) - phi.at<float>(x+1, y-1) - phi.at<float>(x-1, y+1) + phi.at<float>(x-1, y-1));
 
-            mean_curv_motion += deriv_xx * deriv_y * deriv_y;
-            mean_curv_motion -= 2 * deriv_x * deriv_y * deriv_xy;
-            mean_curv_motion += deriv_yy * deriv_x * deriv_x;
-            mean_curv_motion /= deriv_x * deriv_x + deriv_y * deriv_y + epsilon;
-            mean_curv_motion *= tau * w.at<float>(x, y);
+            if (std::sqrt(deriv_x * deriv_x + deriv_y * deriv_y) == 0) {
+                deriv_xx = (1 / 2) * (phi.at<float>(x+1, y) - 2 * phi.at<float>(x, y) + phi.at<float>(x-1, y));
+                deriv_yy = (1 / 2) * (phi.at<float>(x, y+1) - 2 * phi.at<float>(x, y) + phi.at<float>(x, y-1));
+                deriv_xy = (1 / 4) * (phi.at<float>(x+1, y+1) - phi.at<float>(x+1, y-1) - phi.at<float>(x-1, y+1) + phi.at<float>(x-1, y-1));
 
-            double loc_w = w_grad_x.at<float>(x, y);
+                mean_curv_motion += deriv_xx * deriv_y * deriv_y;
+                mean_curv_motion -= 2 * deriv_x * deriv_y * deriv_xy;
+                mean_curv_motion += deriv_yy * deriv_x * deriv_x;
+                mean_curv_motion /= deriv_x * deriv_x + deriv_y * deriv_y + epsilon;
+                mean_curv_motion *= tau * w.at<float>(x, y);
+            }
+
+            double loc_w = tau * w_grad_x.at<float>(x, y);
             if (loc_w < 0)  propagation += loc_w * (phi.at<float>(x+1, y) - phi.at<float>(x, y));
             else            propagation += loc_w * (phi.at<float>(x, y) - phi.at<float>(x-1, y));
 
-            loc_w = w_grad_y.at<float>(x, y);
+            loc_w = tau * w_grad_y.at<float>(x, y);
             if (loc_w < 0)  propagation += loc_w * (phi.at<float>(x, y+1) - phi.at<float>(x, y));
             else            propagation += loc_w * (phi.at<float>(x, y) - phi.at<float>(x, y-1));
 
-            phi.at<float>(x, y) += mean_curv_motion;
+            phi_new.at<float>(x, y) = phi.at<float>(x, y) + mean_curv_motion + propagation;
         }
     }
-
+    phi_new.copyTo(phi);
 }
 
 void calculate_w(cv::Mat& img, cv::Mat& w) {
@@ -297,7 +302,7 @@ void calculate_w(cv::Mat& img, cv::Mat& w) {
 
     for (int x = 0; x < img.rows; x++) {
         for (int y = 0; y < img.cols; y++) {
-            w.at<float>(x, y) = 0.001 / (img_magnitudes.at<float>(x, y) + 1);
+            w.at<float>(x, y) = 1 / (img_magnitudes.at<float>(x, y) + 1);
         }
     }
 }
@@ -339,10 +344,10 @@ void levelSetContours( const cv::Mat& img, const cv::Point2f center, const float
     cv::Mat w(phi.size(), CV_32FC1);
     cv::Mat w_grad_x, w_grad_y;
 
-    for (int k = 0; k < 13000; k++) {
+    for (int k = 0; k < 17000; k++) {
         calculate_w(img_gray, w);
-        cv::Sobel(w, w_grad_x, CV_32FC1, 1, 0, 3);
-        cv::Sobel(w, w_grad_y, CV_32FC1, 0, 1, 3);
+        cv::Sobel(w, w_grad_x, CV_32FC1, 1, 0, 1);
+        cv::Sobel(w, w_grad_y, CV_32FC1, 0, 1, 1);
 
         gradient_descent(phi, w, w_grad_x, w_grad_y);
 
