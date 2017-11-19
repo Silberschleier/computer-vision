@@ -199,7 +199,6 @@ void snakes( const cv::Mat&                     img,
     // - until maximum number of iterations is reached
 for(int iteration = 0; iteration < 100; iteration++) {
 
-
 //sheet02 - start
     cv::Mat img_BGR = img.clone();
     // Blur to denoise
@@ -211,13 +210,13 @@ for(int iteration = 0; iteration < 100; iteration++) {
     // Perform the computations asked in the exercise sheet
     cv::Mat gradients_x;
     cv::Mat gradients_y;
-    cv::Sobel(img_Gray, gradients_x, -1, 1, 0);
-    cv::Sobel(img_Gray, gradients_y, -1, 0, 1); //gradients_x.at<uchar>(i, j)
+    cv::Sobel(img_Gray, gradients_x, CV_64F, 1, 0, 3);
+    cv::Sobel(img_Gray, gradients_y, CV_64F, 0, 1, 3);
 //sheet02 - end
 
     int states = 9;
-    double energy[states][snake.size()+1];
-    int position[states][snake.size()+1];
+    double energy[states][snake.size()];
+    int position[states][snake.size()];
     // all zero 
     for(int i=0; i < (snake.size()-1); i++) {
         for(int j=0; j < states; j++) {
@@ -231,10 +230,12 @@ for(int iteration = 0; iteration < 100; iteration++) {
         for(int x=-1; x <= 1; x++) {
         for(int y=-1; y <= 1; y++) {
             // unary U_n
-            energy[states][v] = (-1)*(gradients_x.at<uchar>(snake[v].x+x, snake[v].y+y)*gradients_x.at<uchar>(snake[v].x+x, snake[v].y+y) + gradients_y.at<uchar>(snake[v].x-x, snake[v].y-y)*gradients_y.at<uchar>(snake[v].x-x, snake[v].y-y));
+            energy[states][v] = (-1)*( gradients_x.at<uchar>(snake[v].x+x, snake[v].y+y)*gradients_x.at<uchar>(snake[v].x+x, snake[v].y+y) + gradients_y.at<uchar>(snake[v].x+x, snake[v].y+y)*gradients_y.at<uchar>(snake[v].x+x, snake[v].y+y) );
         states++;
+            //std::cout << "states: " << states << " ; v: " << v << " ; Energy: "<< energy[states][v] << std::endl;
         }
         }
+        //std::cout << std::endl;
     }
 
     double alpha = 1;
@@ -251,11 +252,11 @@ for(int iteration = 0; iteration < 100; iteration++) {
             for(int cur_y=-1; cur_y <= 1; cur_y++) {
 
                 cv::Point2i nextVertex = snake[v+1];
-                nextVertex.x -= next_x;
-                nextVertex.y -= next_y;
+                nextVertex.x += next_x;
+                nextVertex.y += next_y;
                 cv::Point2i curVertex = snake[v];
-                curVertex.x -= cur_x;
-                curVertex.y -= cur_y;
+                curVertex.x += cur_x;
+                curVertex.y += cur_y;
                 // 
                 double cur_energy = energy[cur_states][v] + alpha*((nextVertex.x-curVertex.x)*(nextVertex.x-curVertex.x)+(nextVertex.y-curVertex.y)*(nextVertex.y-curVertex.y)) + energy[next_states][v+1];
                 if(cur_states == 0) {
@@ -277,6 +278,20 @@ for(int iteration = 0; iteration < 100; iteration++) {
         }
         }
     }
+
+/////////////////////////////////////////////////////////
+//for(int v=0; v < snake.size(); v++) {
+        // go through all states of the current Vertex
+//        int states = 0;
+//        for(int x=-1; x <= 1; x++) {
+//        for(int y=-1; y <= 1; y++) {
+//            std::cout << "states: " << states << " ; v: " << v << " ; Energy: "<< energy[states][v] << " ; Position: "<< position[states][v] << std::endl;
+//            states++;
+//        }
+//        }
+//        std::cout << std::endl;
+//    }
+/////////////////////////////////////////////////////////
     
     // find min in the last column (the column of the last vertex)
     double min_last_energy;
@@ -285,10 +300,12 @@ for(int iteration = 0; iteration < 100; iteration++) {
         if(s == 0) {
             min_last_energy = energy[s][snake.size()-1];
             last_states = s;
+            //std::cout << "s: " << s << std::endl;
         }
-        else if(energy[s][snake.size()] < min_last_energy) {
+        else if(energy[s][snake.size()-1] < min_last_energy) {
             min_last_energy = energy[s][snake.size()-1];
             last_states = s;
+            //std::cout << "s: " << s << " ; Energy: " << energy[s][snake.size()-1] << std::endl;
         }
     }
 
@@ -299,6 +316,13 @@ for(int iteration = 0; iteration < 100; iteration++) {
         final_states[s] = position[final_states[s+1]][s];
     }
  
+
+//////////////////////////////////////////////////////////////
+//    for(int i=0; i < snake.size(); i++) {
+//        std::cout << "i: " << i << " " << final_states[i] << std::endl;
+//    }
+//////////////////////////////////////////////////////////////
+
     for(int i=0; i < snake.size(); i++) {
         //std::cout << "snake " << i << " befor: " << snake[i] << std::endl;
         if(final_states[i] == 0) {
@@ -333,13 +357,7 @@ for(int iteration = 0; iteration < 100; iteration++) {
         }
         //std::cout << "snake " << i << " after: " << snake[i] << std::endl << std::endl;
     }
-/*
-    for(int i=0; i < (snake.size()-1); i++) {
-        for(int j=0; j < states; j++) {
-            std::cout << "energy: " << energy[j][i] << " ; position: " << position[j][i] << std::endl;
-        }
-    }
-*/
+
     // At each step visualize the current result
     // using **drawSnake() and cv::waitKey(10)** as in the example above and when necessary **std::cout**
     // In the end, after the last visualization, use **cv::destroyAllWindows()**
@@ -349,7 +367,7 @@ for(int iteration = 0; iteration < 100; iteration++) {
     img.copyTo( result );
     drawSnake(  result, snake);
     cv::imshow("Snake result", result);
-    cv::waitKey(10);
+    cv::waitKey();
 }
     cv::destroyAllWindows();
 }
