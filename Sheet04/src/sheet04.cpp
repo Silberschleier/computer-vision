@@ -231,7 +231,7 @@ void drawSnake(       cv::Mat                   img,
 
 void gradient_descent(cv::Mat& phi, cv::Mat& w, cv::Mat& w_grad_x, cv::Mat& w_grad_y) {
     double tau = 1;
-    double epsilon = 0.1;
+    double epsilon = 0.001;
     int sobel_kernel_size = 1;
 
     //cv::Mat w(phi.size(), CV_32FC1);
@@ -239,11 +239,11 @@ void gradient_descent(cv::Mat& phi, cv::Mat& w, cv::Mat& w_grad_x, cv::Mat& w_gr
 
     cv::Mat grad_phi_x, grad_phi_y, grad_phi_xx, grad_phi_yy, grad_phi_xy;
     //cv::Mat grad_phi2_x, grad_phi2_y;
-    cv::Sobel(phi, grad_phi_x, CV_32FC1, 1, 0, 3);
+    /*cv::Sobel(phi, grad_phi_x, CV_32FC1, 1, 0, 3);
     cv::Sobel(phi, grad_phi_y, CV_32FC1, 0, 1, 3);
     cv::Sobel(phi, grad_phi_xx, CV_32FC1, 2, 0, 3);
     cv::Sobel(phi, grad_phi_yy, CV_32FC1, 0, 2, 3);
-    cv::Sobel(phi, grad_phi_xy, CV_32FC1, 1, 1, 3);
+    cv::Sobel(phi, grad_phi_xy, CV_32FC1, 1, 1, 3);*/
     //cv::Sobel(phi2, grad_phi2_x, CV_32FC1, 1, 0, sobel_kernel_size);
     //cv::Sobel(phi2, grad_phi2_y, CV_32FC1, 0, 1, sobel_kernel_size);
 
@@ -261,8 +261,8 @@ void gradient_descent(cv::Mat& phi, cv::Mat& w, cv::Mat& w_grad_x, cv::Mat& w_gr
 
             deriv_x = 0.5 * (phi.at<float>(x+1, y) - phi.at<float>(x-1, y));
             deriv_y = 0.5 * (phi.at<float>(x, y+1) - phi.at<float>(x, y-1));
-            deriv_xx = (1 / 4) * (phi.at<float>(x+1, y) - 2 * phi.at<float>(x, y) + phi.at<float>(x-1, y));
-            deriv_yy = (1 / 4) * (phi.at<float>(x, y+1) - 2 * phi.at<float>(x, y) + phi.at<float>(x, y-1));
+            deriv_xx = (1 / 2) * (phi.at<float>(x+1, y) - 2 * phi.at<float>(x, y) + phi.at<float>(x-1, y));
+            deriv_yy = (1 / 2) * (phi.at<float>(x, y+1) - 2 * phi.at<float>(x, y) + phi.at<float>(x, y-1));
             deriv_xy = (1 / 4) * (phi.at<float>(x+1, y+1) - phi.at<float>(x+1, y-1) - phi.at<float>(x-1, y+1) + phi.at<float>(x-1, y-1));
 
             mean_curv_motion += deriv_xx * deriv_y * deriv_y;
@@ -279,10 +279,27 @@ void gradient_descent(cv::Mat& phi, cv::Mat& w, cv::Mat& w_grad_x, cv::Mat& w_gr
             if (loc_w < 0)  propagation += loc_w * (phi.at<float>(x, y+1) - phi.at<float>(x, y));
             else            propagation += loc_w * (phi.at<float>(x, y) - phi.at<float>(x, y-1));
 
-            phi.at<float>(x, y) += mean_curv_motion + propagation;
+            phi.at<float>(x, y) += mean_curv_motion;
         }
     }
 
+}
+
+void calculate_w(cv::Mat& img, cv::Mat& w) {
+    cv::Mat img_grad_x, img_grad_y;
+    cv::Mat img_magnitudes, img_angles;
+
+    cv::Sobel(img, img_grad_x, CV_32F, 1, 0, 3);
+    cv::Sobel(img, img_grad_y, CV_32F, 0, 1, 3);
+    cv::cartToPolar(img_grad_x, img_grad_y, img_magnitudes, img_angles, false);
+
+    cv::pow(img_magnitudes, 2, img_magnitudes);
+
+    for (int x = 0; x < img.rows; x++) {
+        for (int y = 0; y < img.cols; y++) {
+            w.at<float>(x, y) = 0.001 / (img_magnitudes.at<float>(x, y) + 1);
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////
@@ -319,25 +336,14 @@ void levelSetContours( const cv::Mat& img, const cv::Point2f center, const float
     cv::Mat img_gray;
     cv::cvtColor( img, img_gray, cv::COLOR_BGR2GRAY );
 
-    cv::Mat img_grad_x, img_grad_y;
-    cv::Mat img_magnitudes, img_angles;
-
-    cv::Sobel(img_gray, img_grad_x, CV_32F, 1, 0, 3);
-    cv::Sobel(img_gray, img_grad_y, CV_32F, 0, 1, 3);
-    cv::cartToPolar(img_grad_x, img_grad_y, img_magnitudes, img_angles, false);
-
     cv::Mat w(phi.size(), CV_32FC1);
-    for (int x = 0; x < img_magnitudes.rows; x++) {
-        for (int y = 0; y < img_magnitudes.cols; y++) {
-            w.at<float>(x, y) = 0.0001 / (img_magnitudes.at<float>(x, y) + 1);
-        }
-    }
     cv::Mat w_grad_x, w_grad_y;
-    cv::Sobel(w, w_grad_x, CV_32FC1, 1, 0, 3);
-    cv::Sobel(w, w_grad_y, CV_32FC1, 0, 1, 3);
-
 
     for (int k = 0; k < 13000; k++) {
+        calculate_w(img_gray, w);
+        cv::Sobel(w, w_grad_x, CV_32FC1, 1, 0, 3);
+        cv::Sobel(w, w_grad_y, CV_32FC1, 0, 1, 3);
+
         gradient_descent(phi, w, w_grad_x, w_grad_y);
 
         if (k % 100 == 0) {
