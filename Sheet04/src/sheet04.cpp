@@ -49,7 +49,7 @@ int main()
     // For the final submission all implemented parts should be uncommented.
 
     part1();
-    //part2();
+    part2();
 
     std::cout <<                                                                                                   std::endl;
     std::cout << "////////////////////////////////////////////////////////////////////////////////////////////" << std::endl;
@@ -218,6 +218,7 @@ for(int iteration = 0; iteration < 100; iteration++) {
     double energy[states][snake.size()];
     int position[states][snake.size()];
     // all zero 
+
     for(int i=0; i < (snake.size()-1); i++) {
         for(int j=0; j < states; j++) {
             energy[j][i] = 0.;
@@ -257,7 +258,7 @@ for(int iteration = 0; iteration < 100; iteration++) {
                 cv::Point2i curVertex = snake[v];
                 curVertex.x += cur_x;
                 curVertex.y += cur_y;
-                // 
+              
                 double cur_energy = energy[cur_states][v] + alpha*((nextVertex.x-curVertex.x)*(nextVertex.x-curVertex.x)+(nextVertex.y-curVertex.y)*(nextVertex.y-curVertex.y)) + energy[next_states][v+1];
                 if(cur_states == 0) {
                     min_energy = cur_energy;
@@ -266,7 +267,7 @@ for(int iteration = 0; iteration < 100; iteration++) {
                 else if(cur_energy < min_energy) {
                     min_energy = cur_energy;
                     min_states = cur_states;
-                } 
+                }
 
             cur_states++;
             }
@@ -279,20 +280,7 @@ for(int iteration = 0; iteration < 100; iteration++) {
         }
     }
 
-/////////////////////////////////////////////////////////
-//for(int v=0; v < snake.size(); v++) {
-        // go through all states of the current Vertex
-//        int states = 0;
-//        for(int x=-1; x <= 1; x++) {
-//        for(int y=-1; y <= 1; y++) {
-//            std::cout << "states: " << states << " ; v: " << v << " ; Energy: "<< energy[states][v] << " ; Position: "<< position[states][v] << std::endl;
-//            states++;
-//        }
-//        }
-//        std::cout << std::endl;
-//    }
-/////////////////////////////////////////////////////////
-    
+
     // find min in the last column (the column of the last vertex)
     double min_last_energy;
     int last_states;
@@ -315,45 +303,39 @@ for(int iteration = 0; iteration < 100; iteration++) {
     for(int s = (snake.size()-2); s >= 0; s--) {
         final_states[s] = position[final_states[s+1]][s];
     }
- 
 
-//////////////////////////////////////////////////////////////
-//    for(int i=0; i < snake.size(); i++) {
-//        std::cout << "i: " << i << " " << final_states[i] << std::endl;
-//    }
-//////////////////////////////////////////////////////////////
 
     for(int i=0; i < snake.size(); i++) {
         //std::cout << "snake " << i << " befor: " << snake[i] << std::endl;
         if(final_states[i] == 0) {
             snake[i].x -= 1;
-            snake[i].y -= 1; 
+            snake[i].y -= 1;
         }
         else if (final_states[i] == 1) {
             snake[i].x -= 1;
         }
         else if (final_states[i] == 2) {
             snake[i].x -= 1;
-            snake[i].y += 1; 
+            snake[i].y += 1;
         }
         if(final_states[i] == 3) {
-            snake[i].y -= 1; 
+            snake[i].y -= 1;
         }
         else if (final_states[i] == 4) {
         }
         else if (final_states[i] == 5) {
-            snake[i].y += 1; 
+            snake[i].y += 1;
         }
         if(final_states[i] == 6) {
             snake[i].x += 1;
-            snake[i].y -= 1; 
+            snake[i].y -= 1;
         }
         else if (final_states[i] == 7) {
             snake[i].x += 1;
         }
         else if (final_states[i] == 8) {
             snake[i].x += 1;
-            snake[i].y += 1; 
+            snake[i].y += 1;
         }
         //std::cout << "snake " << i << " after: " << snake[i] << std::endl << std::endl;
     }
@@ -396,6 +378,83 @@ void drawSnake(       cv::Mat                   img,
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void gradient_descent(cv::Mat& phi, cv::Mat& w, cv::Mat& w_grad_x, cv::Mat& w_grad_y) {
+    double tau = 0.05;
+    double epsilon = 0.001;
+    int sobel_kernel_size = 1;
+
+    //cv::Mat w(phi.size(), CV_32FC1);
+    //cv::pow(phi, 2, phi2);
+
+    cv::Mat phi_new(phi.size(), phi.type());
+
+    cv::Mat grad_phi_x, grad_phi_y, grad_phi_xx, grad_phi_yy, grad_phi_xy;
+    //cv::Mat grad_phi2_x, grad_phi2_y;
+    /*cv::Sobel(phi, grad_phi_x, CV_32FC1, 1, 0, 1);
+    cv::Sobel(phi, grad_phi_y, CV_32FC1, 0, 1, 1);
+    cv::Sobel(phi, grad_phi_xx, CV_32FC1, 2, 0, 1);
+    cv::Sobel(phi, grad_phi_yy, CV_32FC1, 0, 2, 1);
+    cv::Sobel(phi, grad_phi_xy, CV_32FC1, 1, 1, 1);*/
+    //cv::Sobel(phi2, grad_phi2_x, CV_32FC1, 1, 0, sobel_kernel_size);
+    //cv::Sobel(phi2, grad_phi2_y, CV_32FC1, 0, 1, sobel_kernel_size);
+
+    double mean_curv_motion, propagation, deriv_x, deriv_y, deriv_xx, deriv_yy, deriv_xy;
+    for (int x=0; x<phi.rows; x++) {
+        for (int y=0; y<phi.cols; y++) {
+            mean_curv_motion = 0;
+            propagation = 0;
+
+            /*deriv_x = grad_phi_x.at<float>(x, y);
+            deriv_y = grad_phi_y.at<float>(x, y);
+            deriv_xx = grad_phi_xx.at<float>(x, y);
+            deriv_yy = grad_phi_yy.at<float>(x, y);
+            deriv_xy = grad_phi_xy.at<float>(x, y);*/
+
+            deriv_x = 0.5 * (phi.at<float>(x+1, y) - phi.at<float>(x-1, y));
+            deriv_y = 0.5 * (phi.at<float>(x, y+1) - phi.at<float>(x, y-1));
+
+            if (std::sqrt(deriv_x * deriv_x + deriv_y * deriv_y) == 0) {
+                deriv_xx = (1 / 2) * (phi.at<float>(x+1, y) - 2 * phi.at<float>(x, y) + phi.at<float>(x-1, y));
+                deriv_yy = (1 / 2) * (phi.at<float>(x, y+1) - 2 * phi.at<float>(x, y) + phi.at<float>(x, y-1));
+                deriv_xy = (1 / 4) * (phi.at<float>(x+1, y+1) - phi.at<float>(x+1, y-1) - phi.at<float>(x-1, y+1) + phi.at<float>(x-1, y-1));
+
+                mean_curv_motion += deriv_xx * deriv_y * deriv_y;
+                mean_curv_motion -= 2 * deriv_x * deriv_y * deriv_xy;
+                mean_curv_motion += deriv_yy * deriv_x * deriv_x;
+                mean_curv_motion /= deriv_x * deriv_x + deriv_y * deriv_y + epsilon;
+                mean_curv_motion *= tau * w.at<float>(x, y);
+            }
+
+            double loc_w = tau * w_grad_x.at<float>(x, y);
+            if (loc_w < 0)  propagation += loc_w * (phi.at<float>(x+1, y) - phi.at<float>(x, y));
+            else            propagation += loc_w * (phi.at<float>(x, y) - phi.at<float>(x-1, y));
+
+            loc_w = tau * w_grad_y.at<float>(x, y);
+            if (loc_w < 0)  propagation += loc_w * (phi.at<float>(x, y+1) - phi.at<float>(x, y));
+            else            propagation += loc_w * (phi.at<float>(x, y) - phi.at<float>(x, y-1));
+
+            phi_new.at<float>(x, y) = phi.at<float>(x, y) + mean_curv_motion + propagation;
+        }
+    }
+    phi_new.copyTo(phi);
+}
+
+void calculate_w(cv::Mat& img, cv::Mat& w) {
+    cv::Mat img_grad_x, img_grad_y;
+    cv::Mat img_magnitudes, img_angles;
+
+    cv::Sobel(img, img_grad_x, CV_32F, 1, 0, 3);
+    cv::Sobel(img, img_grad_y, CV_32F, 0, 1, 3);
+    cv::cartToPolar(img_grad_x, img_grad_y, img_magnitudes, img_angles, false);
+
+    cv::pow(img_magnitudes, 2, img_magnitudes);
+
+    for (int x = 0; x < img.rows; x++) {
+        for (int y = 0; y < img.cols; y++) {
+            w.at<float>(x, y) = 1 / (img_magnitudes.at<float>(x, y) + 1);
+        }
+    }
+}
 
 ///////////////////////////////////////////////////////////
 // runs the level-set geodesic active contours algorithm //
@@ -427,6 +486,27 @@ void levelSetContours( const cv::Mat& img, const cv::Point2f center, const float
     // Iterate until
     // - the contour does not change between 2 consequitive iterations, or
     // - until a maximum number of iterations is reached
+
+    cv::Mat img_gray;
+    cv::cvtColor( img, img_gray, cv::COLOR_BGR2GRAY );
+
+    cv::Mat w(phi.size(), CV_32FC1);
+    cv::Mat w_grad_x, w_grad_y;
+
+    for (int k = 0; k < 17000; k++) {
+        calculate_w(img_gray, w);
+        cv::Sobel(w, w_grad_x, CV_32FC1, 1, 0, 1);
+        cv::Sobel(w, w_grad_y, CV_32FC1, 0, 1, 1);
+
+        gradient_descent(phi, w, w_grad_x, w_grad_y);
+
+        if (k % 100 == 0) {
+            showGray(    phi, "phi", 1 );
+            temp = computeContour( phi, 0.0f);
+            showContour( img, temp,  1 );
+            std::cout << "k = "<< k << std::endl;
+        }
+    }
 
     // At each step visualize the current result
     // using **showGray() and showContour()** as in the example above and when necessary **std::cout**
