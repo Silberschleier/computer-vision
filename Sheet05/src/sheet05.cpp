@@ -21,12 +21,33 @@ class GMM_opencv{
 private:
     int num_clus;
     cv::Mat_<double> samples;               // add more variables if necessary
+    cv::ml::EM *_em;
 public:
     GMM_opencv();
     ~GMM_opencv();
     void init(const int nmix, const cv::Mat& img, const cv::Mat& mask);
+    void learnGMM();
     cv::Mat return_posterior(const cv::Mat& img);
 };
+
+GMM_opencv::GMM_opencv() {}
+GMM_opencv::~GMM_opencv() {}
+
+void GMM_opencv::init(const int nmix, const cv::Mat &img, const cv::Mat &mask) {
+    std::cout << CV_MAJOR_VERSION << std::endl;
+    //cv::ml::initModule_ml();
+    std::vector<cv::String> algorithms;
+    //cv::Algorithm::getList(algorithms);
+    //cv::ml::EM *em = cv::Algorithm::create<cv::ml::EM>();
+}
+
+cv::Mat GMM_opencv::return_posterior(const cv::Mat &img) {
+
+}
+
+void GMM_opencv::learnGMM() {
+
+}
 
 
 ////////////////////////////////////
@@ -97,8 +118,8 @@ void part1__1(const cv::Mat& img, const cv::Mat& mask_fg, const cv::Mat& mask_bg
     std::cout << "////////////////////////////////////////////////////////////////////////////////////////////" << std::endl;
     std::cout <<                                                                                                   std::endl;
 
-    /**
-    int nmix=
+
+    int nmix=2;
 
     GMM_opencv gmm_fg;
     gmm_fg.init(nmix,img,mask_fg);
@@ -115,7 +136,7 @@ void part1__1(const cv::Mat& img, const cv::Mat& mask_fg, const cv::Mat& mask_bg
     show.convertTo(show,CV_8U,255);
     cv::imshow("gmm_opencv",show);
     cv::waitKey(0);
-    **/
+
 
     cv::destroyAllWindows();
 }
