@@ -21,7 +21,10 @@ class GMM_opencv{
 private:
     int num_clus;
     cv::Mat_<double> samples;               // add more variables if necessary
-    cv::ml::EM *_em;
+    cv::EM _em;
+    cv::Mat _img;
+    cv::Mat _mask;
+    cv::Mat _samples;
 public:
     GMM_opencv();
     ~GMM_opencv();
@@ -34,19 +37,50 @@ GMM_opencv::GMM_opencv() {}
 GMM_opencv::~GMM_opencv() {}
 
 void GMM_opencv::init(const int nmix, const cv::Mat &img, const cv::Mat &mask) {
-    std::cout << CV_MAJOR_VERSION << std::endl;
-    //cv::ml::initModule_ml();
-    std::vector<cv::String> algorithms;
-    //cv::Algorithm::getList(algorithms);
-    //cv::ml::EM *em = cv::Algorithm::create<cv::ml::EM>();
+    this->_img = img;
+    this->_mask = mask;
+    this->_em = cv::EM(nmix);
+
+    this->_samples = cv::Mat(img.rows * img.cols + 1, 4, CV_32FC1);
+    int sample_index = 0;
+    for (int x=0; x < img.rows; x++) {
+    for (int y=0; y < img.cols; y++) {
+        this->_samples.at<float>(sample_index, 0) = (float) img.at<cv::Vec3d>(x, y)[0];
+        this->_samples.at<float>(sample_index, 1) = (float) img.at<cv::Vec3d>(x, y)[1];
+        this->_samples.at<float>(sample_index, 2) = (float) img.at<cv::Vec3d>(x, y)[2];
+        this->_samples.at<float>(sample_index, 3) = (float) mask.at<uchar>(x, y);
+        //std::cout << "Index: " << sample_index << ", x: " << x << ", y: " << y << std::endl;
+        sample_index++;
+    }
+    }
 }
 
 cv::Mat GMM_opencv::return_posterior(const cv::Mat &img) {
+    cv::Mat results(img.rows, img.cols, CV_64FC1);
+    cv::Mat sample(1, 4, CV_64FC1);
+    cv::Mat output;
 
+    int sample_index = 0;
+    for (int x=0; x < img.rows; x++) {
+        for (int y=0; y < img.cols; y++) {
+            sample.at<float>(0, 0) = (float) img.at<cv::Vec3d>(x, y)[0];
+            sample.at<float>(0, 1) = (float) img.at<cv::Vec3d>(x, y)[1];
+            sample.at<float>(0, 2) = (float) img.at<cv::Vec3d>(x, y)[2];
+            sample.at<float>(0, 3) = (float) this->_mask.at<uchar>(x, y);
+
+            this->_em.predict(sample, output);
+            sample_index++;
+        }
+    }
+    return results;
 }
 
 void GMM_opencv::learnGMM() {
+    
 
+    std::cout << "Training..." << std::endl;
+    this->_em.train(this->_samples);
+    std::cout << "Training done." << std::endl;
 }
 
 
@@ -119,7 +153,7 @@ void part1__1(const cv::Mat& img, const cv::Mat& mask_fg, const cv::Mat& mask_bg
     std::cout <<                                                                                                   std::endl;
 
 
-    int nmix=2;
+    int nmix=10;
 
     GMM_opencv gmm_fg;
     gmm_fg.init(nmix,img,mask_fg);
