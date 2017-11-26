@@ -22,9 +22,7 @@ private:
     int num_clus;
     cv::Mat_<double> samples;               // add more variables if necessary
     cv::EM _em;
-    cv::Mat _img;
     cv::Mat _mask;
-    cv::Mat _samples;
 public:
     GMM_opencv();
     ~GMM_opencv();
@@ -37,38 +35,37 @@ GMM_opencv::GMM_opencv() {}
 GMM_opencv::~GMM_opencv() {}
 
 void GMM_opencv::init(const int nmix, const cv::Mat &img, const cv::Mat &mask) {
-    this->_img = img;
-    this->_mask = mask;
     this->_em = cv::EM(nmix);
 
-    this->_samples = cv::Mat(img.rows * img.cols + 1, 4, CV_32FC1);
+    std::cout << "Building matrix with samples..." << std::endl;
+    this->samples = cv::Mat(img.rows * img.cols, 4, CV_32FC1);
     int sample_index = 0;
     for (int x=0; x < img.rows; x++) {
     for (int y=0; y < img.cols; y++) {
-        this->_samples.at<float>(sample_index, 0) = (float) img.at<cv::Vec3d>(x, y)[0];
-        this->_samples.at<float>(sample_index, 1) = (float) img.at<cv::Vec3d>(x, y)[1];
-        this->_samples.at<float>(sample_index, 2) = (float) img.at<cv::Vec3d>(x, y)[2];
-        this->_samples.at<float>(sample_index, 3) = (float) mask.at<uchar>(x, y);
-        //std::cout << "Index: " << sample_index << ", x: " << x << ", y: " << y << std::endl;
+        this->samples.at<float>(sample_index, 0) = (float) img.at<cv::Vec3f>(x, y)[0];
+        this->samples.at<float>(sample_index, 1) = (float) img.at<cv::Vec3f>(x, y)[1];
+        this->samples.at<float>(sample_index, 2) = (float) img.at<cv::Vec3f>(x, y)[2];
+        this->samples.at<float>(sample_index, 3) = (float) mask.at<uchar>(x, y);
         sample_index++;
     }
     }
+    //this->_samples = cv::Mat::zeros(img.rows * img.cols, 4, CV_32FC1);
 }
 
 cv::Mat GMM_opencv::return_posterior(const cv::Mat &img) {
     cv::Mat results(img.rows, img.cols, CV_64FC1);
     cv::Mat sample(1, 4, CV_64FC1);
-    cv::Mat output;
 
     int sample_index = 0;
     for (int x=0; x < img.rows; x++) {
         for (int y=0; y < img.cols; y++) {
-            sample.at<float>(0, 0) = (float) img.at<cv::Vec3d>(x, y)[0];
-            sample.at<float>(0, 1) = (float) img.at<cv::Vec3d>(x, y)[1];
-            sample.at<float>(0, 2) = (float) img.at<cv::Vec3d>(x, y)[2];
+            sample.at<float>(0, 0) = (float) img.at<cv::Vec3f>(x, y)[0];
+            sample.at<float>(0, 1) = (float) img.at<cv::Vec3f>(x, y)[1];
+            sample.at<float>(0, 2) = (float) img.at<cv::Vec3f>(x, y)[2];
             sample.at<float>(0, 3) = (float) this->_mask.at<uchar>(x, y);
 
-            this->_em.predict(sample, output);
+            int likelihood = this->_em.predict(sample)[0];
+            results.at<float>(x, y) = likelihood;
             sample_index++;
         }
     }
@@ -78,8 +75,8 @@ cv::Mat GMM_opencv::return_posterior(const cv::Mat &img) {
 void GMM_opencv::learnGMM() {
     
 
-    std::cout << "Training..." << std::endl;
-    this->_em.train(this->_samples);
+    std::cout << "Executing EM::train..." << std::endl;
+    this->_em.train(this->samples);
     std::cout << "Training done." << std::endl;
 }
 
@@ -97,6 +94,7 @@ private:
     cv::Mat_<double> samples;           // training pixel samples
     cv::Mat_<double> posterior;         // posterior probability for M step
     int maxIter;
+    cv::Mat _mask;
 
     bool performEM();                   // iteratively called by learnGMM()
 public:
@@ -107,6 +105,34 @@ public:
     cv::Mat return_posterior(const cv::Mat& img);     // call this to generate probability map
 };
 
+bool GMM_custom::performEM() {}
+
+GMM_custom::GMM_custom() {}
+GMM_custom::~GMM_custom() {}
+
+void GMM_custom::init(const int nmix, const cv::Mat& img, const cv::Mat& mask) {
+    this->num_clus = nmix;
+    std::cout << "Building matrix with samples..." << std::endl;
+    this->samples = cv::Mat(img.rows * img.cols, 4, CV_32FC1);
+    int sample_index = 0;
+    for (int x=0; x < img.rows; x++) {
+    for (int y=0; y < img.cols; y++) {
+        this->samples.at<float>(sample_index, 0) = (float) img.at<cv::Vec3f>(x, y)[0];
+        this->samples.at<float>(sample_index, 1) = (float) img.at<cv::Vec3f>(x, y)[1];
+        this->samples.at<float>(sample_index, 2) = (float) img.at<cv::Vec3f>(x, y)[2];
+        this->samples.at<float>(sample_index, 3) = (float) mask.at<uchar>(x, y);
+        sample_index++;
+    }
+    }
+}
+
+void GMM_custom::learnGMM() {
+    cv::Mat labels;
+    cv::Mat means;
+    cv::kmeans(this->samples, this->num_clus, labels, cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 10, 0.001), 10, cv::KMEANS_PP_CENTERS, means);
+}
+
+cv::Mat GMM_custom::return_posterior(const cv::Mat& img) {}
 
 ////////////////////////////////////
 // 2_* and 3 are theoretical work //
