@@ -76,6 +76,9 @@ void GMM_opencv::learnGMM() {
     
 
     std::cout << "Executing EM::train..." << std::endl;
+
+    // This creates a segfault for some reason.
+    // The expected behavior of incorrect samples would be an assertion error or exception of opencv, so this might be a bug within opencv.
     this->_em.train(this->samples);
     std::cout << "Training done." << std::endl;
 }
