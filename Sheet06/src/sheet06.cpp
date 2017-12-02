@@ -34,6 +34,21 @@ ostream& operator << (ostream& os, const vector<T>& v)
     return os;
 }
 
+void calculateHistogram(cv::Mat &img, cv::Mat &hist, cv::Rect &bb) {
+    cv::Mat t(img, bb);
+    cv::Mat img_hsv;
+    cv::cvtColor(t, img_hsv, cv::COLOR_BGR2HSV);
+
+    int h_bins = 256; int s_bins = 256;
+    int histSize[] = {h_bins, s_bins};
+    float h_ranges[] = { 0, 180 };
+    float s_ranges[] = { 0, 256 };
+    const float* ranges[] = { h_ranges, s_ranges };
+    int channels[] = { 0, 1 };
+
+    cv::calcHist(&img_hsv, 1, channels, cv::Mat(), hist, 2, histSize, ranges);
+}
+
 //////////////////////////////////////
 /// class declarations for task 3 ////
 //////////////////////////////////////
@@ -41,12 +56,22 @@ class Particle{
 public:
     Particle(){fitness=0;};
     Particle(cv::Mat& img, cv::Rect& bb, cv::Mat& refhist, const cv::Point2i off);  // present frame, sampled bb from previous frame, refhist and offset from motion model
-    ~Particle(){};
+    ~Particle() = default;;
     cv::Rect bb;
     cv::Mat hist;
-    float fitness;
+    float fitness{};
     void measureFitness(const cv::Mat& refhist);    // evaluates fitness for the present particle given refhist
 };
+
+Particle::Particle(cv::Mat &img, cv::Rect &bb, cv::Mat &refhist, const cv::Point2i off) {
+    this->bb = bb + off;
+    calculateHistogram(img, this->hist, this->bb);
+    this->measureFitness(refhist);
+}
+
+void Particle::measureFitness(const cv::Mat &refhist) {
+    this->fitness = (float) cv::compareHist(refhist, this->hist, CV_COMP_BHATTACHARYYA);
+}
 
 class ParticleFilter{
 public:
@@ -79,6 +104,26 @@ void ParticleFilter::showParticles(cv::Mat& img){
     cv::waitKey(100);
 }
 
+void ParticleFilter::init(cv::Mat &img, cv::Rect &bb) {
+    calculateHistogram(img, this->refhist, bb);
+}
+
+void ParticleFilter::track(cv::Mat &img) {
+    this->showParticles(img);
+}
+
+void ParticleFilter::evaluateCumulFeat() {
+
+}
+
+int ParticleFilter::sampleParticle() {
+    return 0;
+}
+
+cv::Rect ParticleFilter::applyMotionModel(const cv::Rect &bb) {
+    return cv::Rect();
+}
+
 ////////////////////////////////////
 // 1 and 2 are theoretical tasks ///
 ////////////////////////////////////
@@ -86,16 +131,19 @@ void ParticleFilter::showParticles(cv::Mat& img){
 int main(int argc, char* argv[])
 {
 
-//     ParticleFilter pf;
+     ParticleFilter pf;
 
     for(int i=1; i<NUM_IMAGES; i++){
         string fname=fixedLenString(i,2,image_prefix,image_suffix);
-        cv::Mat img=cv::imread(fname.c_str());
+        std::cout << "File: " << fname << std::endl;
+        cv::Mat img=cv::imread(fname);
         cv::imshow("frame",img);
         cv::waitKey(100);
-////        if(i==1) pf.init(img,fram1_bb,mu_decay,sigma);
-////        else pf.track(img);
+        if(i==1) pf.init(img, bb_frame1);
+        else pf.track(img);
     }
+
+    std::cout << CV_VERSION << std::endl;
 
     cout <<                                                                                                   endl;
     cout << "////////////////////////////////////////////////////////////////////////////////////////////" << endl;
