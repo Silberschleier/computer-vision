@@ -98,7 +98,7 @@ float Particle::likelihood(float sigma) {
 
 class ParticleFilter{
 public:
-    ParticleFilter(){numptl=50; mu_x=0; mu_y=0; sigma=8; particles.resize(numptl); cumulFit.resize(numptl);};
+    ParticleFilter(){numptl=50; mu_x=0; mu_y=0; sigma=5; particles.resize(numptl); cumulFit.resize(numptl);};
     ~ParticleFilter(){};
     void init(cv::Mat& img, cv::Rect& bb);      // input is the reference frame and bounding box. Initialize the histogram refhist here
     void track(cv::Mat& img);                   // samples particles from previous frame, applies motion model and then calculates fitness of each particle
@@ -133,7 +133,7 @@ void ParticleFilter::showParticles(cv::Mat& img){
 
 void ParticleFilter::init(cv::Mat &img, cv::Rect &bb) {
     calculateHistogram(img, this->refhist, bb);
-    mu_decay = 0.9;
+    mu_decay = 0.65;
 
     mean_x = bb.tl().x;
     mean_y = bb.tl().y;
@@ -150,7 +150,7 @@ void ParticleFilter::track(cv::Mat &img) {
 
     // Calculate fitness weighted mean positions
     for ( auto &particle : particles ) {
-        float fitness = particle.likelihood(sigma);
+        float fitness = particle.fitness;
         fitness_mean_x += fitness * particle.bb.tl().x;
         fitness_mean_y += fitness * particle.bb.tl().y;
         temp_sum += fitness;
