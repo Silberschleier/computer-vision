@@ -38,8 +38,8 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/lib)		# Library file location for ma
 set(PROJECT_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)			# Source folder
 set(PROJECT_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/src)		# Header folder
 
-#set(CMAKE_BUILD_TYPE debug)					# choose if you want to compile with or without debugging flags,
-set(CMAKE_BUILD_TYPE release)					# uncomment only one of the following two commands at a time
+set(CMAKE_BUILD_TYPE debug)					# choose if you want to compile with or without debugging flags,
+#set(CMAKE_BUILD_TYPE release)					# uncomment only one of the following two commands at a time
 
 #To build the project openCV is required
 find_package( OpenCV REQUIRED )
