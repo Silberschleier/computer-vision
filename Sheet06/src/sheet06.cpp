@@ -3,6 +3,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <string>
+#include <math.h>
 #include <iomanip>
 
 using namespace std;
@@ -47,6 +48,7 @@ void calculateHistogram(cv::Mat &img, cv::Mat &hist, cv::Rect &bb) {
     int channels[] = { 0, 1 };
 
     cv::calcHist(&img_hsv, 1, channels, cv::Mat(), hist, 2, histSize, ranges);
+    cv::normalize(hist, hist, 0, 1, cv::NORM_MINMAX, -1, cv::Mat());
 }
 
 //////////////////////////////////////
@@ -60,6 +62,7 @@ public:
     cv::Rect bb;
     cv::Mat hist;
     float fitness{};
+    float likelihood(float sigma);
     void measureFitness(const cv::Mat& refhist);    // evaluates fitness for the present particle given refhist
 };
 
@@ -73,9 +76,13 @@ void Particle::measureFitness(const cv::Mat &refhist) {
     this->fitness = (float) cv::compareHist(refhist, this->hist, CV_COMP_BHATTACHARYYA);
 }
 
+float Particle::likelihood(float sigma) {
+    return std::exp( -(fitness / ( 2 * sigma * sigma)) );
+}
+
 class ParticleFilter{
 public:
-    ParticleFilter(){numptl=200; mu_x=0; mu_y=0; particles.resize(numptl); cumulFit.resize(numptl);};
+    ParticleFilter(){numptl=200; mu_x=0; mu_y=0; sigma=7; particles.resize(numptl); cumulFit.resize(numptl);};
     ~ParticleFilter(){};
     void init(cv::Mat& img, cv::Rect& bb);      // input is the reference frame and bounding box. Initialize the histogram refhist here
     void track(cv::Mat& img);                   // samples particles from previous frame, applies motion model and then calculates fitness of each particle
@@ -87,11 +94,13 @@ public:
     vector<float> cumulFit;         // vector to hold the cumulative fitness
     vector<Particle> particles;
     cv::Mat refhist;                 // holds the reference color histogram for evaluating fitness of particles from further frames
+    cv::Rect current_bb;
 private:
     void evaluateCumulFeat();       // computes cumulative fitness distribution and populates cumulFit
     int sampleParticle();
     cv::Rect applyMotionModel(const cv::Rect& bb);
     cv::RNG rng;                     // random number generator for offsets, sampling etc.
+    float mean_x, mean_y;
 };
 
 void ParticleFilter::showParticles(cv::Mat& img){
@@ -106,14 +115,63 @@ void ParticleFilter::showParticles(cv::Mat& img){
 
 void ParticleFilter::init(cv::Mat &img, cv::Rect &bb) {
     calculateHistogram(img, this->refhist, bb);
+    mu_decay = 0.1;
+
+    mean_x = bb.tl().x;
+    mean_y = bb.tl().y;
+
+    // Generate particles
+    for(int pid=0; pid<numptl; ++pid){
+        cv::Point2i off((int) rng.gaussian(sigma), (int) rng.gaussian(sigma));
+        particles[pid] = Particle(img, bb, refhist, off);
+    }
 }
 
 void ParticleFilter::track(cv::Mat &img) {
+    float fitness_mean_x = 0, fitness_mean_y = 0, temp_sum = 0;
+
+    // Calculate fitness weighted mean positions
+    for ( auto &particle : particles ) {
+        float fitness = particle.likelihood(sigma);
+        fitness_mean_x += fitness * particle.bb.tl().x;
+        fitness_mean_y += fitness * particle.bb.tl().y;
+        temp_sum += fitness;
+    }
+    fitness_mean_x /= temp_sum;
+    fitness_mean_y /= temp_sum;
+
+    // Calculate motions
+    this->mu_x = this->mu_decay * this->mu_x + (1 - this->mu_decay) * (fitness_mean_x - mean_x);
+    this->mu_y = this->mu_decay * this->mu_y + (1 - this->mu_decay) * (fitness_mean_y - mean_y);
+    mean_x = fitness_mean_x; mean_y = fitness_mean_y;
+    std::cout << "mu_x: " << mu_x << ", mu_y: " << mu_y << std::endl;
+
+    // Move particles and calculate fitness
+    evaluateCumulFeat();
+
     this->showParticles(img);
+
+    // Show found bb
+    cv::Mat show=img.clone();
+    cv::rectangle(show,current_bb,cv::Scalar(0,255,0),1);
+    cv::imshow("boundingbox",show);
 }
 
 void ParticleFilter::evaluateCumulFeat() {
+    cv::Rect best_bb;
+    float best_likelihood = 1000;
 
+    for ( auto &particle : particles ) {
+        particle.bb += cv::Point2i((int) (mu_x + rng.gaussian(sigma)), (int) (mu_y + rng.gaussian(sigma)));
+        particle.measureFitness(refhist);
+
+        if (particle.likelihood(sigma) < best_likelihood) {
+            best_likelihood = particle.likelihood(sigma);
+            best_bb = particle.bb;
+        }
+    }
+
+    current_bb = best_bb;
 }
 
 int ParticleFilter::sampleParticle() {
@@ -121,7 +179,9 @@ int ParticleFilter::sampleParticle() {
 }
 
 cv::Rect ParticleFilter::applyMotionModel(const cv::Rect &bb) {
-    return cv::Rect();
+    cv::Point2i motion((int) this->mu_x, (int) this->mu_y);
+
+    return bb + motion;
 }
 
 ////////////////////////////////////
