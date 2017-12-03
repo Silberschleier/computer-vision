@@ -133,7 +133,7 @@ void ParticleFilter::showParticles(cv::Mat& img){
 
 void ParticleFilter::init(cv::Mat &img, cv::Rect &bb) {
     calculateHistogram(img, this->refhist, bb);
-    mu_decay = 0.1;
+    mu_decay = 0.9;
 
     mean_x = bb.tl().x;
     mean_y = bb.tl().y;
@@ -164,8 +164,9 @@ void ParticleFilter::track(cv::Mat &img) {
     mean_x = fitness_mean_x; mean_y = fitness_mean_y;
     std::cout << "mu_x: " << mu_x << ", mu_y: " << mu_y << std::endl;
 
-    // Move particles and calculate fitness
+    // Resample
     evaluateCumulFeat();
+    resample();
 
     this->showParticles(img);
 
@@ -173,29 +174,6 @@ void ParticleFilter::track(cv::Mat &img) {
     cv::Mat show=img.clone();
     cv::rectangle(show,current_bb,cv::Scalar(0,255,0),1);
     cv::imshow("boundingbox",show);
-
-    // Resample
-    resample();
-}
-
-
-void ParticleFilter::resample() {
-    vector<Particle> resampled(numptl);
-
-    for (int i = 0; i < numptl; i++) {
-        int n = rng.uniform(0, 1);
-        for ( int j = 0; j < numptl; j++) {
-            if (cumulFit[j] <= n) {
-                auto particle = particles[j];
-                auto off = cv::Point2i((int) (mu_x + rng.gaussian(sigma)), (int) (mu_y + rng.gaussian(sigma)));
-                auto bb = cv::Rect(particle.bb);
-                resampled[i] = Particle(particle.img, bb, refhist, off);
-                break;
-            }
-        }
-    }
-    particles = resampled;
-
 }
 
 void ParticleFilter::evaluateCumulFeat() {
@@ -228,6 +206,33 @@ void ParticleFilter::evaluateCumulFeat() {
     std::partial_sum(weights.begin(), weights.end(), cumulFit.begin(), plus<float>());
 }
 
+void ParticleFilter::resample() {
+    vector<Particle> resampled(numptl);
+
+    for (int i = 0; i < numptl; i++) {
+        float n = rng.uniform(0.f, 1.f);
+        for ( int j = 0; j < numptl; j++) {
+            if (cumulFit[j] <= n or cumulFit[0] > n) {
+                auto particle = particles[j];
+                auto off = cv::Point2i((int) (mu_x + rng.gaussian(sigma)), (int) (mu_y + rng.gaussian(sigma)));
+                auto bb = cv::Rect(particle.bb);
+                resampled[i] = Particle(particle.img, bb, refhist, off);
+                break;
+            }
+        }
+    }
+
+    std::cout << "Particles: " << particles.size() << ", Resampled: " << resampled.size() << std::endl;
+
+    for (int i = 0; i < numptl; i++) {
+        particles[i] = resampled[i];
+        if ( particles[i].hist.dims == 0) {
+            std::cout << "Dims = 0" << std::endl;
+        }
+    }
+
+}
+
 int ParticleFilter::sampleParticle() {
     return 0;
 }
@@ -250,7 +255,7 @@ int main(int argc, char* argv[])
         string fname=fixedLenString(i,2,image_prefix,image_suffix);
         std::cout << "File: " << fname << std::endl;
         cv::Mat img=cv::imread(fname);
-        cv::imshow("frame",img);
+        //cv::imshow("frame",img);
         cv::waitKey(100);
         if(i==1) pf.init(img, bb_frame1);
         else pf.track(img);
