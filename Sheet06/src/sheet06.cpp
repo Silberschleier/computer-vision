@@ -98,7 +98,7 @@ float Particle::likelihood(float sigma) {
 
 class ParticleFilter{
 public:
-    ParticleFilter(){numptl=50; mu_x=0; mu_y=0; sigma=5; particles.resize(numptl); cumulFit.resize(numptl);};
+    ParticleFilter(float sigma, float mu_decay) { numptl=50; mu_x=0; mu_y=0; this->sigma=sigma; this->mu_decay=mu_decay; particles.resize(numptl); cumulFit.resize(numptl);};
     ~ParticleFilter(){};
     void init(cv::Mat& img, cv::Rect& bb);      // input is the reference frame and bounding box. Initialize the histogram refhist here
     void track(cv::Mat& img);                   // samples particles from previous frame, applies motion model and then calculates fitness of each particle
@@ -133,7 +133,6 @@ void ParticleFilter::showParticles(cv::Mat& img){
 
 void ParticleFilter::init(cv::Mat &img, cv::Rect &bb) {
     calculateHistogram(img, this->refhist, bb);
-    mu_decay = 0.65;
 
     mean_x = bb.tl().x;
     mean_y = bb.tl().y;
@@ -162,7 +161,7 @@ void ParticleFilter::track(cv::Mat &img) {
     this->mu_x = this->mu_decay * this->mu_x + (1 - this->mu_decay) * (fitness_mean_x - mean_x);
     this->mu_y = this->mu_decay * this->mu_y + (1 - this->mu_decay) * (fitness_mean_y - mean_y);
     mean_x = fitness_mean_x; mean_y = fitness_mean_y;
-    std::cout << "mu_x: " << mu_x << ", mu_y: " << mu_y << std::endl;
+    //std::cout << "mu_x: " << mu_x << ", mu_y: " << mu_y << std::endl;
 
     // Resample
     evaluateCumulFeat();
@@ -222,7 +221,7 @@ void ParticleFilter::resample() {
         }
     }
 
-    std::cout << "Particles: " << particles.size() << ", Resampled: " << resampled.size() << std::endl;
+    //std::cout << "Particles: " << particles.size() << ", Resampled: " << resampled.size() << std::endl;
 
     for (int i = 0; i < numptl; i++) {
         particles[i] = resampled[i];
@@ -248,12 +247,21 @@ cv::Rect ParticleFilter::applyMotionModel(const cv::Rect &bb) {
 
 int main(int argc, char* argv[])
 {
+    float sigma, mu;
+    if (argc != 3 and argc != 1) {
+        std::cout << "Usage: " << argv[0] << " <mu_decay> <sigma>" << std::endl;
+        std::cout << "Default is mu_decay = 0.7 and sigma=5" << std::endl;
+        exit(-1);
+    }
+    else if (argc == 1) { mu = 0.7; sigma = 5; } // Best results for sigma=5 with mu=0.7
+    else { sscanf(argv[1], "%f", &mu); sscanf(argv[2], "%f", &sigma); }
+    std::cout << "Tracking with mu_decay=" << mu << " and sigma=" << sigma << std::endl;
 
-     ParticleFilter pf;
+    ParticleFilter pf(sigma, mu);
 
     for(int i=1; i<NUM_IMAGES; i++){
         string fname=fixedLenString(i,2,image_prefix,image_suffix);
-        std::cout << "File: " << fname << std::endl;
+        //std::cout << "File: " << fname << std::endl;
         cv::Mat img=cv::imread(fname);
         //cv::imshow("frame",img);
         cv::waitKey(100);
