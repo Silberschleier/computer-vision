@@ -132,7 +132,7 @@ void ParticleFilter::track(cv::Mat &img) {
 
     // Calculate fitness weighted mean positions
     for ( auto &particle : particles ) {
-        float fitness = particle.likelihood(sigma);
+        float fitness = particle.fitness;
         fitness_mean_x += fitness * particle.bb.tl().x;
         fitness_mean_y += fitness * particle.bb.tl().y;
         temp_sum += fitness;
