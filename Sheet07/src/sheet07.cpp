@@ -202,13 +202,23 @@ void ShapeModel::trainModel(){
     // Exercise 2.1: 
 
     // find mean
+    reduce(trainD, meanShape, 1, CV_REDUCE_AVG);
 
     // find covariance
+    Mat covar, mean;
+    calcCovarMatrix(trainD, covar, mean, CV_COVAR_NORMAL|CV_COVAR_COLS);
 
     // find eigenvectors and eigen values
+    Mat eigenvalues, eigenvectors;
+    eigen(covar, eigenvalues, eigenvectors);
 
     // store principle components
-    return;
+    for ( int i=0; i < eigenvectors.rows; i++) {
+        Mat vector = eigenvectors.row(i);
+        normalize(vector, vector);
+    }
+    eigenvectors.copyTo(prinComp);
+    eigenvalues.copyTo(prinVal);
 }
 
 void ShapeModel::displayModel(){
@@ -217,7 +227,7 @@ void ShapeModel::displayModel(){
 
     // visualize weights 
 
-    return;
+    displayShape(meanShape, string("meanShape"), 1);
 }
 
 
@@ -229,7 +239,7 @@ void ShapeModel::inference(){
 
     // and reconstruction
 
-    return;
+    displayShape(testD, "testData", 1);
 
 }
 
@@ -268,10 +278,10 @@ void ShapeModel::displayShape(Mat& shapes,string header, int waitFlag){
 int main(){
 
     // Procrustes Analysis
-    cout <<  "Procrustes Analysis:" << endl;
+   /* cout <<  "Procrustes Analysis:" << endl;
     ProcrustesAnalysis proc;
     proc.LoadData(file_for_procustes);
-    proc.AlignData();
+    proc.AlignData();*/
 
     // Shape Analysis
     // training procedure
