@@ -237,12 +237,14 @@ void ShapeModel::displayModel(){
     displayShape(meanShape, string("meanShape"), 1);
 
     // visualize weights
-    const float weights[] = {1, 1, 1};
-    showWeighted(weights);
-
-
-
-
+    float weights[] = {0.7, 0.7, 0.7};
+    for ( int i = 0; i < 3; i++) {
+        showWeighted(weights);
+        weights[i] += 0.3;
+        showWeighted(weights);
+        weights[i] += 0.3;
+        showWeighted(weights);
+    }
 }
 
 void ShapeModel::showWeighted(const float *weights) {
@@ -256,7 +258,7 @@ void ShapeModel::showWeighted(const float *weights) {
     }
 
 
-    displayShape(W, string("W"), 0);
+    displayShape(W, string("W"), 1);
 }
 
 void ShapeModel::inference(){
