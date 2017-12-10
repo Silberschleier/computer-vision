@@ -170,6 +170,7 @@ private:
     Mat prinVal;
     RNG rng;
     int scl;
+    void showWeighted(const float *weights);
 };
 
 void ShapeModel::loadData(const string& fileLoc, Mat& data){
@@ -198,6 +199,7 @@ void ShapeModel::loadData(const string& fileLoc, Mat& data){
 }
 
 void ShapeModel::trainModel(){
+    int k = 3;
 
     // Exercise 2.1: 
 
@@ -213,29 +215,56 @@ void ShapeModel::trainModel(){
     eigen(covar, eigenvalues, eigenvectors);
 
     // store principle components
-    for ( int i=0; i < eigenvectors.rows; i++) {
-        Mat vector = eigenvectors.row(i);
+    Mat principles(eigenvectors.rows, k, eigenvectors.type());
+    Mat values(1, k, eigenvalues.type());
+
+    for ( int i=0; i < k; i++) {
+        Mat vector = eigenvectors.col(i);
         normalize(vector, vector);
+        vector.copyTo(principles.col(i));
+        values.at<float>(0, i) = eigenvalues.at<float>(0, i);
     }
-    eigenvectors.copyTo(prinComp);
-    eigenvalues.copyTo(prinVal);
+    principles.copyTo(prinComp);
+    values.copyTo(prinVal);
+
+    //eigenvectors.copyTo(prinComp);
+    //eigenvalues.copyTo(prinVal);
 }
 
 void ShapeModel::displayModel(){
 
-    // Exercise 2.2: 
-
-    // visualize weights 
-
+    // Exercise 2.2:
     displayShape(meanShape, string("meanShape"), 1);
+
+    // visualize weights
+    const float weights[] = {1, 1, 1};
+    showWeighted(weights);
+
+
+
+
 }
 
+void ShapeModel::showWeighted(const float *weights) {
+    Mat W;
+    meanShape.copyTo(W);
+
+    for (int i = 0; i < W.rows; i++) {
+        for (int k = 0; k < prinComp.cols; k++) {
+            W.at<float>(0, i) += prinComp.at<float>(k, i) * prinVal.at<float>(0, i) * weights[k];
+        }
+    }
+
+
+    displayShape(W, string("W"), 0);
+}
 
 void ShapeModel::inference(){
 
     // Exercise 3: 
 
     // decomposition
+
 
     // and reconstruction
 
