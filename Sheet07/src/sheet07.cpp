@@ -59,9 +59,25 @@ bool ProcrustesAnalysis::LoadData(string in_fpath){
 
 
 void ProcrustesAnalysis::AlignData(){
-    
+    displayShape(data, string("before"), 1);
     // Exercise 1.4: 
     // compute mean shape, align shapes to mean, compute error, repeat ...
+/*
+    int max_iter = 1000;
+    float min_error = - 0.00001;
+    for(int iter=0; iter < max_iter; iter++) {
+        ComputeMeanShape(Mat& in_data, Mat& out_mu, double in_ref_var);
+        AlignShape(Mat in_tgt, Mat& in_ref, Mat& out_aligned);
+        if(ComputeAvgError(Mat& in_newdata) < min_error) {
+            std::cout << "AvgError < min_error" << std::endl;
+            break;
+        }
+    }
+*/
+    Mat out_mu(data.rows,1,CV_32F);
+    double in_ref_var;
+    ComputeMeanShape(data, out_mu, in_ref_var);
+    
     return;
 }
 
@@ -72,6 +88,13 @@ void ProcrustesAnalysis::ComputeMeanShape(Mat& in_data, Mat& out_mu, double in_r
     // Exercise 1.1: 
 
     // mean point
+    for(int row=0; row < in_data.rows; ++row){
+        out_mu.at<float>(row,0) = 0.;
+        for(int col=0; col < in_data.cols; ++col){
+            out_mu.at<float>(row,0) += in_data.at<float>(row,col);
+        }
+        out_mu.at<float>(row,0) = out_mu.at<float>(row,0)/in_data.cols;
+    }
 
     // variance
 
@@ -307,10 +330,10 @@ void ShapeModel::displayShape(Mat& shapes,string header, int waitFlag){
 int main(){
 
     // Procrustes Analysis
-   /* cout <<  "Procrustes Analysis:" << endl;
+    cout <<  "Procrustes Analysis:" << endl;
     ProcrustesAnalysis proc;
     proc.LoadData(file_for_procustes);
-    proc.AlignData();*/
+    proc.AlignData();
 
     // Shape Analysis
     // training procedure
