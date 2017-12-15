@@ -44,28 +44,45 @@ int main(int argc, char *argv[]) {
 
 
     /// filter matches by ratio test
-    vector<DMatch> filtered_matches;
+    vector<DMatch> filtered_matches_1to2;
     for ( auto nearest_matches : matches_1to2 ) {
         float ratio = nearest_matches[0].distance / nearest_matches[1].distance;
         if (ratio <= threshold) {
-            filtered_matches.push_back(nearest_matches[0]);
+            filtered_matches_1to2.push_back(nearest_matches[0]);
         }
     }
-
-    cout << "Size keypoints1: " << keypoints1.size() << endl;
-    cout << "Size keypoints2: " << keypoints2.size() << endl;
-    cout << "Size matches: " << matches_1to2.size() << endl;
 
     /// determine two-way matches
     vector<vector<DMatch>> matches_2to1;
     matcher.knnMatch(descriptors1, descriptors2, matches_2to1, neighbouring_matches);
 
+    vector<DMatch> two_way_matches;
+    for ( auto nearest_matches : matches_2to1 ) {
+        auto best_match = nearest_matches[0];
+        // Skip matches above threshold to reduce search space
+        float ratio = best_match.distance / nearest_matches[1].distance;
+        if (ratio > threshold) {
+            continue;
+        }
 
+        // Check if match is also in 1to2 matches
+        for ( auto match : filtered_matches_1to2 ) {
+            if ( match.queryIdx == best_match.trainIdx ) {
+                two_way_matches.push_back(match);
+                break;
+            }
+        }
+    }
 
+    cout << "Size keypoints1: " << keypoints1.size() << endl;
+    cout << "Size keypoints2: " << keypoints2.size() << endl;
+    cout << "Size matches_1to2: " << matches_1to2.size() << endl;
+    cout << "Size filtered_matches_1to2: " << filtered_matches_1to2.size() << endl;
+    cout << "Size two_way_matches: " << two_way_matches.size() << endl;
 
     /// visualize matching key-points
     Mat img_matches;
-    drawMatches(image1, keypoints1, image2, keypoints2, filtered_matches, img_matches);
+    drawMatches(image1, keypoints1, image2, keypoints2, two_way_matches, img_matches);
     imshow("Matches", img_matches);
 
 
