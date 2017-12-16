@@ -59,6 +59,7 @@ int main(int argc, char *argv[]) {
     vector<DMatch> two_way_matches;
     for ( auto nearest_matches : matches_2to1 ) {
         auto best_match = nearest_matches[0];
+
         // Skip matches above threshold to reduce search space
         float ratio = best_match.distance / nearest_matches[1].distance;
         if (ratio > threshold) {
@@ -95,15 +96,40 @@ int main(int argc, char *argv[]) {
     ///=======================================================///
 
     /// Implement RANSAC here
+    RNG rng(0xFFFFFFFF);
+    float epsilon = 1;
 
+    for (int i = 0; i < 100; i++) {
+        // Select random pairs
+        Point2f coords1[4], coords2[4];
+        set<int> selected_matches;
+        while (selected_matches.size() <= 4) {
+            int rnd_index = rng.uniform(0, (int) two_way_matches.size());
 
+            // Skip already chosen matches
+            if (selected_matches.count(rnd_index) == 1) continue;
+            selected_matches.insert(rnd_index);
 
+            auto match = two_way_matches[rnd_index];
+            coords1[selected_matches.size()-1] = keypoints1[match.queryIdx].pt;
+            coords2[selected_matches.size()-1] = keypoints2[match.trainIdx].pt;
+        }
 
+        // Compute homography
+        Mat homography = getPerspectiveTransform(coords1, coords2);
 
+        // Compute inliers
+        for ( auto match : two_way_matches ) {
+            auto pt1 = keypoints1[match.queryIdx].pt;
+            auto pt2 = keypoints2[match.trainIdx].pt;
 
+            Mat mapped_pt = homography * Mat(Vec3f(pt1.x, pt1.y, 1)).t();
+
+        }
+
+    }
 
     ///  Transform and stitch the images here
-
 
 
 
