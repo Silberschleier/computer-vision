@@ -16,8 +16,8 @@ int main(int argc, char *argv[]) {
     float threshold = 0.4;
 
     /// read and show images
-    Mat image1 = imread("./images/mountain1.png", IMREAD_COLOR);
-    Mat image2 = imread("./images/mountain2.png", IMREAD_COLOR);
+    Mat image2 = imread("./images/mountain1.png", IMREAD_COLOR);
+    Mat image1 = imread("./images/mountain2.png", IMREAD_COLOR);
     imshow("Image-1", image1);
     imshow("Image-2", image2);
     waitKey(0);
@@ -147,7 +147,14 @@ int main(int argc, char *argv[]) {
     }
 
     // Re-compute homography on all of the inliers
+    /*vector<Point2f> coords1, coords2;
+    for ( auto match : max_inliers ) {
+        coords1.push_back(keypoints1[match.queryIdx].pt);
+        coords2.push_back(keypoints2[match.trainIdx].pt);
+    }
+    best_homography = getPerspectiveTransform(coords1, coords2);*/
 
+    cout << "Inliers of best homography: " << max_inliers.size() << endl;
 
     // Test
     vector<Point2f> srcPoints, dstPoints;
@@ -158,26 +165,29 @@ int main(int argc, char *argv[]) {
     //best_homography = findHomography(srcPoints, dstPoints, CV_RANSAC);
 
     ///  Transform and stitch the images here
-    Mat image2_warped, image_stitched;
+    Mat image1_warped, image2_warped, image_stitched;
+
+    image1_warped = Mat::zeros(img_matches.size(), img_matches.type());
+    image1.copyTo(image1_warped(Rect(0, 0, image1.cols, image1.rows)));
+
+    image_stitched = Mat::zeros(img_matches.size(), img_matches.type());
     warpPerspective(image2, image2_warped, best_homography, img_matches.size());
 
     // Merge images together
-    image2_warped.copyTo(image_stitched);
-    for ( int x=0; x < image1.cols; x++) {
-        for ( int y=0; y < image1.rows; y++) {
-            Vec3b color_im1 = image1.at<Vec3b>(x, y);
-            Vec3b color_im2 = image_stitched.at<Vec3b>(x, y);
+    for ( int x=0; x < image_stitched.rows; x++) {
+        for ( int y=0; y < image_stitched.cols; y++) {
+            Vec3b color_im1 = image1_warped.at<Vec3b>(x, y);
+            Vec3b color_im2 = image2_warped.at<Vec3b>(x, y);
             if ( color_im2[0] == 0 && color_im2[1] == 0 && color_im2[2] == 0) {
-            //if (norm(color_im2) == 0) {
-                image_stitched.at<Vec3b>(x, y)[0] = color_im1[0] + color_im2[0];
-                image_stitched.at<Vec3b>(x, y)[1] = color_im1[1] + color_im2[1];
-                image_stitched.at<Vec3b>(x, y)[2] = color_im1[2] + color_im2[2];
+                image_stitched.at<Vec3b>(x, y) = color_im1;
+            } else {
+                image_stitched.at<Vec3b>(x,  y) = color_im2;
             }
         }
     }
 
     /// visualize stitched image
-    imshow("Image2 Warped", image_stitched);
+    imshow("Image stitched", image_stitched);
     waitKey(0);
     destroyAllWindows();
 
