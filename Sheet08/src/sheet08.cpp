@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
 
     /// determine two-way matches
     vector<vector<DMatch>> matches_2to1;
-    matcher.knnMatch(descriptors1, descriptors2, matches_2to1, neighbouring_matches);
+    matcher.knnMatch(descriptors2, descriptors1, matches_2to1, neighbouring_matches);
 
     vector<DMatch> two_way_matches;
     for ( auto nearest_matches : matches_2to1 ) {
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 
         // Check if match is also in 1to2 matches
         for ( auto match : filtered_matches_1to2 ) {
-            if ( match.queryIdx == best_match.trainIdx ) {
+            if ( match.queryIdx == best_match.trainIdx && match.trainIdx == best_match.queryIdx) {
                 two_way_matches.push_back(match);
                 break;
             }
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
 
     /// Implement RANSAC here
     RNG rng(0xFFFFFFFF);
-    float epsilon = 10000;
+    float epsilon = 2;
 
     int max_num_inliers = 0;
     Mat best_homography;
@@ -128,14 +128,14 @@ int main(int argc, char *argv[]) {
             Mat position_vec1(Vec3d(pt1.x, pt1.y, 1), CV_64FC1);
             Mat position_vec2(Vec3d(pt2.x, pt2.y, 1), CV_64FC1);
             Mat mapped_pt = homography * position_vec1;
+            mapped_pt *= 1. / mapped_pt.at<double>(2, 0);
 
             // Calculate distance
             double distance = 0;
             for (int row=0; row < mapped_pt.rows; row++) {
-                double t = mapped_pt.at<double>(row, 0) * position_vec2.at<double>(row, 0);
+                double t = mapped_pt.at<double>(row, 0) - position_vec2.at<double>(row, 0);
                 distance += t * t;
             }
-            //cout << "Distance: " << distance << endl;
 
             if (distance < epsilon) num_inliers++;
         }
