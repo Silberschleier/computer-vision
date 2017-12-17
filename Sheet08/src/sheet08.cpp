@@ -97,9 +97,9 @@ int main(int argc, char *argv[]) {
 
     /// Implement RANSAC here
     RNG rng(0xFFFFFFFF);
-    float epsilon = 2;
+    float epsilon = 3;
 
-    int max_num_inliers = 0;
+    vector<DMatch> max_inliers;
     Mat best_homography;
     for (int i = 0; i < 20; i++) {
         // Select random pairs
@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
         Mat homography = getPerspectiveTransform(coords1, coords2);
 
         // Count inliers
-        int num_inliers = 0;
+        vector<DMatch> inliers;
         for ( auto match : two_way_matches ) {
             auto pt1 = keypoints1[match.queryIdx].pt;
             auto pt2 = keypoints2[match.trainIdx].pt;
@@ -137,16 +137,17 @@ int main(int argc, char *argv[]) {
                 distance += t * t;
             }
 
-            if (distance < epsilon) num_inliers++;
+            if (distance < epsilon) inliers.push_back(match);
         }
 
-        if ( num_inliers > max_num_inliers ) {
-            max_num_inliers = num_inliers;
+        if ( inliers.size() > max_inliers.size() ) {
+            max_inliers = inliers;
             homography.copyTo(best_homography);
         }
     }
 
-    cout << "Inliers of best homography: " << max_num_inliers << endl;
+    // Re-compute homography on all of the inliers
+
 
     // Test
     vector<Point2f> srcPoints, dstPoints;
@@ -154,7 +155,7 @@ int main(int argc, char *argv[]) {
         dstPoints.push_back(keypoints1[match.queryIdx].pt);
         srcPoints.push_back(keypoints2[match.trainIdx].pt);
     }
-    best_homography = findHomography(srcPoints, dstPoints, CV_RANSAC);
+    //best_homography = findHomography(srcPoints, dstPoints, CV_RANSAC);
 
     ///  Transform and stitch the images here
     Mat image2_warped, image_stitched;
