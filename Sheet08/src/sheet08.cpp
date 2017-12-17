@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
     RNG rng(0xFFFFFFFF);
     float epsilon = 1;
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 20; i++) {
         // Select random pairs
         Point2f coords1[4], coords2[4];
         set<int> selected_matches;
@@ -122,8 +122,15 @@ int main(int argc, char *argv[]) {
         for ( auto match : two_way_matches ) {
             auto pt1 = keypoints1[match.queryIdx].pt;
             auto pt2 = keypoints2[match.trainIdx].pt;
+            Mat position_vec1(Vec3d(pt1.x, pt1.y, 1), CV_64FC1);
+            Mat position_vec2(Vec3d(pt2.x, pt2.y, 1), CV_64FC1);
 
-            Mat mapped_pt = homography * Mat(Vec3f(pt1.x, pt1.y, 1)).t();
+            cout << "Size homography: " << homography.size() << endl;
+            cout << "Size Position.t(): " << position_vec1.t().size() << endl;
+            Mat mapped_pt = homography * position_vec1.t();
+            cout << "Size mapped: " << mapped_pt.size() << endl;
+
+            // Calculate distance
 
         }
 
