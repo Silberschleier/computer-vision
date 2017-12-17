@@ -1,5 +1,4 @@
 #include <iostream>
-#include <string>
 #include <vector>
 #include <map>
 #include <opencv2/opencv.hpp>
@@ -16,8 +15,8 @@ int main(int argc, char *argv[]) {
     float threshold = 0.4;
 
     /// read and show images
-    Mat image2 = imread("./images/mountain1.png", IMREAD_COLOR);
-    Mat image1 = imread("./images/mountain2.png", IMREAD_COLOR);
+    Mat image1 = imread("./images/mountain1.png", IMREAD_COLOR);
+    Mat image2 = imread("./images/mountain2.png", IMREAD_COLOR);
     imshow("Image-1", image1);
     imshow("Image-2", image2);
     waitKey(0);
@@ -75,12 +74,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    cout << "Size keypoints1: " << keypoints1.size() << endl;
-    cout << "Size keypoints2: " << keypoints2.size() << endl;
-    cout << "Size matches_1to2: " << matches_1to2.size() << endl;
-    cout << "Size filtered_matches_1to2: " << filtered_matches_1to2.size() << endl;
-    cout << "Size two_way_matches: " << two_way_matches.size() << endl;
-
     /// visualize matching key-points
     Mat img_matches;
     drawMatches(image1, keypoints1, image2, keypoints2, two_way_matches, img_matches);
@@ -113,8 +106,8 @@ int main(int argc, char *argv[]) {
             selected_matches.insert(rnd_index);
 
             auto match = two_way_matches[rnd_index];
-            coords1[selected_matches.size()-1] = keypoints1[match.queryIdx].pt;
-            coords2[selected_matches.size()-1] = keypoints2[match.trainIdx].pt;
+            coords1[selected_matches.size()-1] = keypoints2[match.trainIdx].pt;
+            coords2[selected_matches.size()-1] = keypoints1[match.queryIdx].pt;
         }
 
         // Compute homography
@@ -123,8 +116,8 @@ int main(int argc, char *argv[]) {
         // Count inliers
         vector<DMatch> inliers;
         for ( auto match : two_way_matches ) {
-            auto pt1 = keypoints1[match.queryIdx].pt;
-            auto pt2 = keypoints2[match.trainIdx].pt;
+            auto pt1 = keypoints2[match.trainIdx].pt;
+            auto pt2 = keypoints1[match.queryIdx].pt;
             Mat position_vec1(Vec3d(pt1.x, pt1.y, 1), CV_64FC1);
             Mat position_vec2(Vec3d(pt2.x, pt2.y, 1), CV_64FC1);
             Mat mapped_pt = homography * position_vec1;
@@ -145,24 +138,6 @@ int main(int argc, char *argv[]) {
             homography.copyTo(best_homography);
         }
     }
-
-    // Re-compute homography on all of the inliers
-    /*vector<Point2f> coords1, coords2;
-    for ( auto match : max_inliers ) {
-        coords1.push_back(keypoints1[match.queryIdx].pt);
-        coords2.push_back(keypoints2[match.trainIdx].pt);
-    }
-    best_homography = getPerspectiveTransform(coords1, coords2);*/
-
-    cout << "Inliers of best homography: " << max_inliers.size() << endl;
-
-    // Test
-    vector<Point2f> srcPoints, dstPoints;
-    for ( auto match : two_way_matches ) {
-        dstPoints.push_back(keypoints1[match.queryIdx].pt);
-        srcPoints.push_back(keypoints2[match.trainIdx].pt);
-    }
-    //best_homography = findHomography(srcPoints, dstPoints, CV_RANSAC);
 
     ///  Transform and stitch the images here
     Mat image1_warped, image2_warped, image_stitched;
