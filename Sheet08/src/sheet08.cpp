@@ -142,18 +142,41 @@ int main(int argc, char *argv[]) {
 
         if ( num_inliers > max_num_inliers ) {
             max_num_inliers = num_inliers;
-            best_homography = homography;
+            homography.copyTo(best_homography);
         }
-        cout << "Num inliers: " << num_inliers << endl;
     }
 
+    cout << "Inliers of best homography: " << max_num_inliers << endl;
+
+    // Test
+    vector<Point2f> srcPoints, dstPoints;
+    for ( auto match : two_way_matches ) {
+        dstPoints.push_back(keypoints1[match.queryIdx].pt);
+        srcPoints.push_back(keypoints2[match.trainIdx].pt);
+    }
+    best_homography = findHomography(srcPoints, dstPoints, CV_RANSAC);
+
     ///  Transform and stitch the images here
+    Mat image2_warped, image_stitched;
+    warpPerspective(image2, image2_warped, best_homography, img_matches.size());
 
-
-
-
+    // Merge images together
+    image2_warped.copyTo(image_stitched);
+    for ( int x=0; x < image1.cols; x++) {
+        for ( int y=0; y < image1.rows; y++) {
+            Vec3b color_im1 = image1.at<Vec3b>(x, y);
+            Vec3b color_im2 = image_stitched.at<Vec3b>(x, y);
+            if ( color_im2[0] == 0 && color_im2[1] == 0 && color_im2[2] == 0) {
+            //if (norm(color_im2) == 0) {
+                image_stitched.at<Vec3b>(x, y)[0] = color_im1[0] + color_im2[0];
+                image_stitched.at<Vec3b>(x, y)[1] = color_im1[1] + color_im2[1];
+                image_stitched.at<Vec3b>(x, y)[2] = color_im1[2] + color_im2[2];
+            }
+        }
+    }
 
     /// visualize stitched image
+    imshow("Image2 Warped", image_stitched);
     waitKey(0);
     destroyAllWindows();
 
