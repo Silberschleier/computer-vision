@@ -97,8 +97,10 @@ int main(int argc, char *argv[]) {
 
     /// Implement RANSAC here
     RNG rng(0xFFFFFFFF);
-    float epsilon = 1;
+    float epsilon = 10000;
 
+    int max_num_inliers = 0;
+    Mat best_homography;
     for (int i = 0; i < 20; i++) {
         // Select random pairs
         Point2f coords1[4], coords2[4];
@@ -118,22 +120,31 @@ int main(int argc, char *argv[]) {
         // Compute homography
         Mat homography = getPerspectiveTransform(coords1, coords2);
 
-        // Compute inliers
+        // Count inliers
+        int num_inliers = 0;
         for ( auto match : two_way_matches ) {
             auto pt1 = keypoints1[match.queryIdx].pt;
             auto pt2 = keypoints2[match.trainIdx].pt;
             Mat position_vec1(Vec3d(pt1.x, pt1.y, 1), CV_64FC1);
             Mat position_vec2(Vec3d(pt2.x, pt2.y, 1), CV_64FC1);
-
-            cout << "Size homography: " << homography.size() << endl;
-            cout << "Size Position.t(): " << position_vec1.t().size() << endl;
-            Mat mapped_pt = homography * position_vec1.t();
-            cout << "Size mapped: " << mapped_pt.size() << endl;
+            Mat mapped_pt = homography * position_vec1;
 
             // Calculate distance
+            double distance = 0;
+            for (int row=0; row < mapped_pt.rows; row++) {
+                double t = mapped_pt.at<double>(row, 0) * position_vec2.at<double>(row, 0);
+                distance += t * t;
+            }
+            //cout << "Distance: " << distance << endl;
 
+            if (distance < epsilon) num_inliers++;
         }
 
+        if ( num_inliers > max_num_inliers ) {
+            max_num_inliers = num_inliers;
+            best_homography = homography;
+        }
+        cout << "Num inliers: " << num_inliers << endl;
     }
 
     ///  Transform and stitch the images here
