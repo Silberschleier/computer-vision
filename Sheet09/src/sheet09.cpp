@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <math.h>
 #include <opencv2/opencv.hpp>
 
 cv::Mat flow_2_RGB( const cv::Mat &inpFlow, const float &max_size );
@@ -24,7 +25,34 @@ float maxFlow(const cv::Mat& flow) {
  * Average Angular Error
  */
 float averageAngularError(const cv::Mat& estimatedFlow, const cv::Mat& flowGroundTruth) {
-    // TODO: implement average angular error
+    double error_sum = 0;
+    for ( int i = 0; i < estimatedFlow.rows; i++) {
+        for ( int j = 0; j < estimatedFlow.cols; j++) {
+            float u = estimatedFlow.at<cv::Point2f>(i, j).x;
+            float v = estimatedFlow.at<cv::Point2f>(i, j).y;
+            float uc = flowGroundTruth.at<cv::Point2f>(i, j).x;
+            float vc = flowGroundTruth.at<cv::Point2f>(i, j).y;
+
+            auto nominator = uc * u + vc * v + 1;
+            auto denominator = (cv::pow(uc, 2) + cv::pow(vc, 2) + 1) * (cv::pow(u, 2) + cv::pow(v, 2) + 1);
+            error_sum +=  acos(nominator / cv::sqrt(denominator));
+        }
+    }
+
+    return (float) (error_sum / (estimatedFlow.rows * estimatedFlow.cols));
+}
+
+float sumPixelsInWindow(const cv::Mat& mat, int x, int y, int windowDim) {
+    float sum = 0;
+    for ( int i = x - windowDim / 2; i < x + windowDim / 2; i++ ) {
+        for ( int j = y - windowDim / 2; j < y + windowDim / 2; j++) {
+            if ( x >= 0 && y >= 0 && x < mat.rows && y < mat.cols ) {
+                sum += mat.at<float>(i, j);
+            }
+        }
+    }
+
+    return sum;
 }
 
 /*
@@ -34,7 +62,23 @@ float averageAngularError(const cv::Mat& estimatedFlow, const cv::Mat& flowGroun
  * @param windowDim: dimension of the window
  */
 void lucasKanade(const cv::Mat& IxIx, const cv::Mat& IyIy, const cv::Mat& IxIy, const cv::Mat& IxIt, const cv::Mat& IyIt, cv::Mat& flow, int windowDim) {
-    //TODO: implement Lucas Kanade Optical Flow here
+    for ( int i = 0; i < flow.rows; i++ ) {
+        for ( int j = 0; j < flow.cols; j++ ) {
+            cv::Mat secondMoment(2, 2, CV_32FC1);
+            secondMoment.at<float>(0, 0) = sumPixelsInWindow(IxIx, i, j, windowDim);
+            secondMoment.at<float>(1, 0) = sumPixelsInWindow(IxIy, i, j, windowDim);
+            secondMoment.at<float>(0, 1) = secondMoment.at<float>(1, 0);
+            secondMoment.at<float>(1, 1) = sumPixelsInWindow(IyIy, i, j, windowDim);
+
+            cv::Mat atb(2, 1, CV_32FC1);
+            atb.at<float>(0, 0) = sumPixelsInWindow(IxIt, i, j, windowDim);
+            atb.at<float>(1, 0) = sumPixelsInWindow(IyIt, i, j, windowDim);
+
+            cv::Mat result = secondMoment.inv() * atb;
+            flow.at<cv::Point2f>(i, j).y = -result.at<float>(1, 0);
+            flow.at<cv::Point2f>(i, j).x = -result.at<float>(0, 0);
+        }
+    }
 }
 
 /*
@@ -101,12 +145,17 @@ int main(int argc, char *argv[])
     ////  Apply Lucas-Kanade  ////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////
 
+    cv::Mat flowGroundTruth_RGB = flow_2_RGB( flowGroundTruth, MAX(maxFlowGroundTruth, maxFlow(flow) ) );
+    cv::imshow("flow_ground_truth_rgb", flowGroundTruth_RGB);
+    cv::waitKey(0);
+
     std::cout << "Applying Lucas-Kanade..." << std::endl;
     lucasKanade(IxIx, IyIy, IxIy, IxIt, IyIt, flow, window_DIM);
     std::cout << "Average Angular Error = " << averageAngularError(flow, flowGroundTruth)  << "\n" << std::endl;
 
     // display result
-    cv::Mat flowGroundTruth_RGB = flow_2_RGB( flowGroundTruth, MAX(maxFlowGroundTruth, maxFlow(flow) ) );
+
+
     cv::Mat flow_RGB = flow_2_RGB( flow, MAX(maxFlowGroundTruth, maxFlow(flow) ) );
 
     cv::imshow("lucas_kanade_flow_rgb", flow_RGB);
