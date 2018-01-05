@@ -97,14 +97,17 @@ void hornSchunck(const cv::Mat& IxIx, const cv::Mat& IyIy, const cv::Mat& IxIy, 
     laplace_kernel.at<float>(2, 1) = 0.25;
     laplace_kernel.at<float>(1, 2) = 0.25;
 
-    cv::Mat u_current = cv::Mat::zeros(flow.rows, flow.cols, flow.type());
-    cv::Mat v_current = cv::Mat::zeros(flow.rows, flow.cols, flow.type());
-    cv::Mat u_next(flow.rows, flow.cols, flow.type());
-    cv::Mat v_next(flow.rows, flow.cols, flow.type());
-    cv::Mat delta_u, delta_v, dash_u, dash_v;
+    cv::Mat u_current, v_current;
+    cv::Mat u_next = cv::Mat::zeros(flow.rows, flow.cols, flow.type());
+    cv::Mat v_next = cv::Mat::zeros(flow.rows, flow.cols, flow.type());
+    cv::Mat delta_u, delta_v, dash_u, dash_v, diff_u, diff_v;
 
-    float diff = 100;
+    double diff = 1;
     while (diff >= 0.002) {
+        // Step forward
+        u_next.copyTo(u_current);
+        v_next.copyTo(v_current);
+
         // Estimate delta-u and delta-v
         cv::filter2D(u_current, delta_u, -1, laplace_kernel);
         cv::filter2D(v_current, delta_v, -1, laplace_kernel);
@@ -131,7 +134,8 @@ void hornSchunck(const cv::Mat& IxIx, const cv::Mat& IyIy, const cv::Mat& IxIy, 
         }
 
         // Calculate difference
-        diff -= 1;
+        diff = cv::norm(u_next, u_current, cv::NORM_L1) + cv::norm(v_next, v_current, cv::NORM_L1);
+        //std::cout << "Diff: " << diff << std::endl;
     }
 
     // Convert to Point2f
