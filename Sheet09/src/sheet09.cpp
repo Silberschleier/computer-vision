@@ -87,13 +87,65 @@ void lucasKanade(const cv::Mat& IxIx, const cv::Mat& IyIy, const cv::Mat& IxIy, 
  * @param flow: the resulting optical flow
  */
 void hornSchunck(const cv::Mat& IxIx, const cv::Mat& IyIy, const cv::Mat& IxIy, const cv::Mat& IxIt, const cv::Mat& IyIt, cv::Mat& flow) {
-    //TODO: implement Horn-Schunck Optical Flow here
+    float alpha = 1;
+
+    // Create kernel for approximation of delta-u and delta-v
+    cv::Mat laplace_kernel = cv::Mat::zeros(3, 3, CV_32FC1);
+    laplace_kernel.at<float>(1, 1) = -1;
+    laplace_kernel.at<float>(0, 1) = 0.25;
+    laplace_kernel.at<float>(1, 0) = 0.25;
+    laplace_kernel.at<float>(2, 1) = 0.25;
+    laplace_kernel.at<float>(1, 2) = 0.25;
+
+    cv::Mat u_current = cv::Mat::zeros(flow.rows, flow.cols, flow.type());
+    cv::Mat v_current = cv::Mat::zeros(flow.rows, flow.cols, flow.type());
+    cv::Mat u_next(flow.rows, flow.cols, flow.type());
+    cv::Mat v_next(flow.rows, flow.cols, flow.type());
+    cv::Mat delta_u, delta_v, dash_u, dash_v;
+
+    float diff = 100;
+    while (diff >= 0.002) {
+        // Estimate delta-u and delta-v
+        cv::filter2D(u_current, delta_u, -1, laplace_kernel);
+        cv::filter2D(v_current, delta_v, -1, laplace_kernel);
+
+        // Get dash-u and dash-v
+        cv::add(u_current, delta_u, dash_u);
+        cv::add(v_current, delta_v, dash_v);
+
+        // Update u and v
+        for ( int i = 0; i < flow.rows; i++ ) {
+            for ( int j = 0; j < flow.cols; j++ ) {
+                float nom_u = IxIx.at<float>(i, j) * ( IxIx.at<float>(i, j) * dash_u.at<float>(i, j)
+                                                       + IxIy.at<float>(i, j) * dash_v.at<float>(i, j)
+                                                       + IxIt.at<float>(i, j));
+                float nom_v = IyIy.at<float>(i, j) * ( IxIy.at<float>(i, j) * dash_u.at<float>(i, j)
+                                                       + IyIy.at<float>(i, j) * dash_v.at<float>(i, j)
+                                                       + IyIt.at<float>(i, j));
+                auto denom_u = (float) ( pow(alpha, 2) + pow(IxIx.at<float>(i, j), 2) + pow(IxIy.at<float>(i, j), 2) );
+                auto denom_v = (float) ( pow(alpha, 2) + pow(IxIy.at<float>(i, j), 2) + pow(IyIy.at<float>(i, j), 2) );
+
+                u_next.at<float>(i, j) = dash_u.at<float>(i, j) - (nom_u / denom_u);
+                v_next.at<float>(i, j) = dash_v.at<float>(i, j) - (nom_v / denom_v);
+            }
+        }
+
+        // Calculate difference
+        diff -= 1;
+    }
+
+    // Convert to Point2f
+    for ( int i = 0; i < flow.rows; i++ ) {
+        for ( int j = 0; j < flow.cols; j++ ) {
+            flow.at<cv::Point2f>(i, j) = cv::Point2f(u_next.at<float>(i, j), v_next.at<float>(i, j));
+        }
+    }
 }
 
 int main(int argc, char *argv[])
 {
 
-    int window_DIM = 15;
+    int window_DIM = 7;
 
     std::string fileNameFlow  = "./data/groundTruthOF.flo";
     std::string fileNameImg1 = "./data/frame1.png";
