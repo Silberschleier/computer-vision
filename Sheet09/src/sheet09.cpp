@@ -44,11 +44,19 @@ float averageAngularError(const cv::Mat& estimatedFlow, const cv::Mat& flowGroun
 
 float sumPixelsInWindow(const cv::Mat& mat, int x, int y, int windowDim) {
     float sum = 0;
-    for ( int i = x - windowDim / 2; i < x + windowDim / 2; i++ ) {
-        for ( int j = y - windowDim / 2; j < y + windowDim / 2; j++) {
-            if ( x >= 0 && y >= 0 && x < mat.rows && y < mat.cols ) {
-                sum += mat.at<float>(i, j);
-            }
+    int lower_rows = x - windowDim / 2;
+    int lower_cols = y - windowDim / 2;
+    int upper_rows = x + windowDim / 2;
+    int upper_cols = y + windowDim / 2;
+
+    if ( lower_rows < 0 ) lower_rows = 0;
+    if ( lower_cols < 0 ) lower_cols = 0;
+    if ( upper_rows >= mat.rows ) upper_rows = mat.rows - 1;
+    if ( upper_cols >= mat.cols ) upper_cols = mat.cols - 1;
+
+    for ( int i = lower_rows; i < upper_rows; i++ ) {
+        for ( int j = lower_cols; j < upper_cols; j++) {
+            sum += mat.at<float>(i, j);
         }
     }
 
