@@ -157,7 +157,7 @@ void hornSchunck(const cv::Mat& IxIx, const cv::Mat& IyIy, const cv::Mat& IxIy, 
 int main(int argc, char *argv[])
 {
 
-    int window_DIM = 7;
+    int window_DIM = 15;
 
     std::string fileNameFlow  = "./data/groundTruthOF.flo";
     std::string fileNameImg1 = "./data/frame1.png";
