@@ -4,6 +4,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <string>
 #include <iomanip>
+#include <cv.h>
 
 using namespace std;
 
@@ -35,16 +36,23 @@ ostream& operator << (ostream& os, const vector<T>& v)
 
 int main()
 {
-
+    cv::Size chessboard_dimensions(10, 7);
 
     for(int i=1; i<NUM_IMAGES; i++){
         string fname=fixedLenString(i,3,image_prefix,image_suffix);
         cv::Mat img=cv::imread(fname.c_str());
         cv::imshow("frame",img);
-        cv::waitKey(100);
-    }
 
-	// task 1: call function
+        // task 1: call function
+
+        cv::Mat corners;
+        auto patternWasFound = cv::findChessboardCorners(img, chessboard_dimensions, corners);
+        // TODO: Maybe refine with cornerSubPix
+        cv::drawChessboardCorners(img, chessboard_dimensions, corners, patternWasFound);
+        cv::imshow("pattern", img);
+
+        cv::waitKey(0);
+    }
 
 	// task 2: call function
 
