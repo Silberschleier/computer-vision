@@ -90,12 +90,41 @@ int main()
     std::cout << "----------------" << std::endl;
     std::cout << distortionMatrix << std::endl;
 
+    std::vector<std::vector<cv::Mat>> reprojection_table;
     for (int i = 0; i < rotation_vectors.size(); i++) {
         std::cout << std::endl << std::endl;
         cv::Mat rotation;
+	
         cv::Rodrigues(rotation_vectors.at(i), rotation);
         std::cout << "Rotation for image " << i << ": " << std::endl << rotation << std::endl;
         std::cout << "Translation for image " << i << ": " << std::endl << translation_vectors.at(i) << std::endl;
+
+	// task 3: call function
+	cv::Mat translation = translation_vectors.at(i);
+	// no need for the 3. col of the rotation matrix, because z=0
+	cv::Mat rotation_and_translation(3,4,CV_64F);
+	for(int row=0; row < 3; row++) {
+		for(int col=0; col < 3; col++) {
+			rotation_and_translation.at<double>(row,col) = rotation.at<double>(row,col);
+		}
+		rotation_and_translation.at<double>(row,3) = translation.at<double>(row,0);	
+	}
+	std::cout << "rotation and translation matrix " << std::endl << rotation_and_translation << std::endl;
+	
+	std::vector<cv::Point3f> o = objectPoints.at(i);
+	std::vector<cv::Mat> reprojections;
+
+	for(int points = 0; points < 70; points++ ) {
+		cv::Point3f point = o.at(points);
+		double vec[4] = {point.x, point.y, point.z, 1};
+		cv::Mat position = cv::Mat(4,1, CV_64FC1, vec);
+		cv::Mat reprojection = cameraMatrix * rotation_and_translation * position;
+		reprojections.push_back(reprojection);
+	}
+	reprojection_table.push_back(reprojections);
+
+	
+	
 
         // task 4: call function
         cv::Mat undistorted, difference;
@@ -105,10 +134,25 @@ int main()
         cv::imshow("difference", difference);
         cv::waitKey(0);
     }
-
-	// task 3: call function
-
-
+	// task 3: reprojection error
+	std::cout << reprojection_table.size() << std::endl;
+	double reprojection_error_x, reprojection_error_y = 0.;
+	double n = reprojection_table.size();
+	double k = reprojection_table.at(0).size();
+	for(int i=0; i < reprojection_table.size(); i++) {
+		std::vector<cv::Mat> reprojections = reprojection_table.at(i);
+		std::vector<cv::Point3f> o = objectPoints.at(i);
+		for(int j=0; j < reprojections.size(); j++) {
+			cv::Mat pointR = reprojections.at(j);
+			cv::Point3f pointO = o.at(j);
+			reprojection_error_x += std::abs(pointR.at<double>(0,0)-pointO.x);
+			reprojection_error_y += std::abs(pointR.at<double>(1,0)-pointO.y);
+		}
+	}
+	reprojection_error_x = reprojection_error_x * (1/(n*k));
+	reprojection_error_y = reprojection_error_y * (1/(n*k));
+	std::cout << "reprojection_error_x = " << reprojection_error_x << std::endl;
+	std::cout << "reprojection_error_y = " << reprojection_error_y << std::endl;
 
 	// task 5: call function
 
