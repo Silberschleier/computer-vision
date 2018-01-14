@@ -73,6 +73,8 @@ int main()
 
         cv::waitKey(100);
     }
+    cv::waitKey(0);
+    cv::destroyAllWindows();
 
     // task 2: call function
     cv::Mat cameraMatrix = cv::Mat::eye(3, 3, CV_64F);
@@ -90,13 +92,23 @@ int main()
 
     for (int i = 0; i < rotation_vectors.size(); i++) {
         std::cout << std::endl << std::endl;
-        std::cout << "Rotation for image " << i << ": " << rotation_vectors.at(i) << std::endl;
-        std::cout << "Translation for image " << i << ": " << translation_vectors.at(i) << std::endl;
+        cv::Mat rotation;
+        cv::Rodrigues(rotation_vectors.at(i), rotation);
+        std::cout << "Rotation for image " << i << ": " << std::endl << rotation << std::endl;
+        std::cout << "Translation for image " << i << ": " << std::endl << translation_vectors.at(i) << std::endl;
+
+        // task 4: call function
+        cv::Mat undistorted, difference;
+        cv::undistort(images_gray.at(i), undistorted, cameraMatrix, distortionMatrix);
+        cv::absdiff(images_gray.at(i), undistorted, difference);
+
+        cv::imshow("difference", difference);
+        cv::waitKey(0);
     }
 
 	// task 3: call function
 
-	// task 4: call function
+
 
 	// task 5: call function
 
